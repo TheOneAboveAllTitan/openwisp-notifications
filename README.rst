@@ -28,7 +28,9 @@ Available features
 ------------------
 
 - `Generate notifications <#generating-notifications>`_
-- TODO: add more
+- Generation and transmission of notifications
+- Receive notifications on email
+- Customizable notifications
 
 Install development version
 ---------------------------
@@ -158,6 +160,7 @@ The complete syntax for ``notify`` is.
     notify.send(actor, recipient, verb, action_object, target, level, description, **kwargs)
 
 .. note::
+
     Since ``openwisp-notifications`` uses ``django-notifications`` under the hood, usage of the
     ``notify signal`` has been kept unaffected to maintain consistency with ``django-notifications``.
     You can learn more about accepted parameters from `django-notifications documentation
@@ -179,6 +182,95 @@ Additionally Supported Parameters
 |                 |                                                                             |
 |                 | Default to **None** meaning above message would not be added to the email.  |
 +-----------------+-----------------------------------------------------------------------------+
+|       type      | Set values of other parameters based on predefined setting                  |
+|                 | ``OPENWISP_NOTIFICATION_TYPES``                                             |
+|                 |                                                                             |
+|                 | Defaults to **None** meaning you need to provide other arguments.           |
++-----------------+-----------------------------------------------------------------------------+
+
+Settings
+--------
+
+``OPENSWISP_NOTIFICATION_TYPES``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to define additional notification types.
+Following properties can be configured for each notification type:
+
++-----------------+--------------------------------------------------------------------------------+
+|   **Property**  |                         **Description**                                        |
++-----------------+--------------------------------------------------------------------------------+
+|      level      | Sets ``level`` attribute of the notification.                                  |
++-----------------+--------------------------------------------------------------------------------+
+|      verb       | Sets ``verb`` attribute of the notification.                                   |
++-----------------+--------------------------------------------------------------------------------+
+|      name       | Sets display name of notification type.                                        |
++-----------------+--------------------------------------------------------------------------------+
+|     message     | Path to markdown file which would be used to set description the notification. |
++-----------------+--------------------------------------------------------------------------------+
+|  email_subject  | Sets subject of the email notification.                                        |
++-----------------+--------------------------------------------------------------------------------+
+
+For example, if you want to add a notification type ``device added`` you can use:
+
+.. code-block:: python
+
+    # In your_project/settings.py
+    OPENSWISP_NOTIFICATION_TYPES = {
+        'custom type': {
+            'level': 'info',
+            'verb': 'added',
+            'name': 'device added',
+            'message': 'configurables/message.md',
+            'email_subject' : 'A device has been added'
+        },
+    }
+
+``OPENWISP_NOTIFICATION_MESSAGE_TEMPLATE``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------------+
+| **type**:    | ``string``                     |
++--------------+--------------------------------+
+| **default**: | ``configurables/message.md``   |
++--------------+--------------------------------+
+
+This setting allows to provide a default markdown formatted template for customizing description of notification.
+If a notification type does not define it's message template explicitly, then this message template will be used.
+Extra parameters passed to ``notify`` signal is also available in the message template.
+You can either provide a new template from scratch, or extend the default one.
+An example use case has been demonstrated for reference.
+
+Suppose, you have passed a `url` keyword arguemnt in notify signal as follows.
+
+.. code-block:: python
+    
+    notify.send(
+       sender=admin,
+       type='device added',
+       url='https://localhost:8000/admin',
+    )
+
+Then you can use ``url`` in message template as shown below.
+
+.. code-block:: jinja2
+
+    # In templates/configurables/your_message_template.md
+    {% extends 'configurables/message.md' %}
+    {% block body %}
+        For more info, see {{ url }}.
+    {% endblock body %}
+
+.. note::
+
+    For above code to excute sucessfully you should have configured ``OPENWISP_NOTIFICATION_MESSAGE_TEMPLATE``
+    setting accordingly.
 
 Contributing
 ------------

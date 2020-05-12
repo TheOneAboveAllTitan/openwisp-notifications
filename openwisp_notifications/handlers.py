@@ -3,8 +3,10 @@ from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.db.models.query import QuerySet
+from django.template.loader import render_to_string
 from django.utils import timezone
 from openwisp_notifications import settings as app_settings
+from openwisp_notifications.notification_types import NOTIFICATION_TYPES
 from swapper import load_model
 
 User = get_user_model()
@@ -14,7 +16,7 @@ EXTRA_DATA = app_settings.get_config()['USE_JSONFIELD']
 Notification = load_model('openwisp_notifications', 'Notification')
 
 
-def notify_handler(verb, **kwargs):
+def notify_handler(**kwargs):
     """
     Handler function to create Notification instance upon action signal call.
     """
@@ -24,9 +26,29 @@ def notify_handler(verb, **kwargs):
     public = bool(kwargs.pop('public', True))
     description = kwargs.pop('description', None)
     timestamp = kwargs.pop('timestamp', timezone.now())
-    level = kwargs.pop('level', Notification.LEVELS.info)
     recipient = kwargs.pop('recipient', None)
+    notification_type = kwargs.pop('type', None)
+    notification_template = NOTIFICATION_TYPES.get(notification_type, {})
+    level = notification_template.get(
+        'level', kwargs.pop('level', Notification.LEVELS.info)
+    )
+    verb = notification_template.get('verb', kwargs.pop('verb', None))
+    message_template = notification_template.get(
+        'message', app_settings.MESSAGE_TEMPLATE
+    )
 
+    if not description:
+        message_context = {
+            'actor': actor,
+            'level': level,
+            'verb': verb,
+        }
+        message_context.update(kwargs)
+        description = render_to_string(message_template, message_context).rstrip()
+
+    kwargs['email_subject'] = notification_template.get(
+        'email_subject', kwargs.get('email_subject', None),
+    )
     target_org = getattr(kwargs.get('target', None), 'organization_id', None)
 
     where = Q(is_superuser=True)
@@ -51,12 +73,12 @@ def notify_handler(verb, **kwargs):
             .order_by('date_joined')
             .filter(where)
         )
-    new_notifications = []
 
     optional_objs = [
         (kwargs.pop(opt, None), opt) for opt in ('target', 'action_object')
     ]
 
+    new_notifications = []
     for recipient in recipients:
         newnotify = Notification(
             recipient=recipient,
@@ -67,6 +89,7 @@ def notify_handler(verb, **kwargs):
             description=description,
             timestamp=timestamp,
             level=level,
+            type=notification_type,
         )
 
         # Set optional objects

@@ -101,6 +101,15 @@ TEMPLATES = [
 ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = False
 OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK = True
 
+OPENWISP_NOTIFICATION_TYPES = {
+    'dummy': {
+        'level': 'dummy level',
+        'verb': 'dummy verb',
+        'name': 'Dummy Notification Type',
+        'subject': '[openwisp-notification] Dummy Email Notification',
+    }
+}
+
 # local settings must be imported before test runner otherwise they'll be ignored
 try:
     from local_settings import *
