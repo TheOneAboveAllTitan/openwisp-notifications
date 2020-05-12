@@ -13,8 +13,8 @@ OpenWISP Notifications Module
 It is used to notify OpenWISP users about meaningful events in their network.
 It not only handles common tasks like selecting appropriate recipients for a notification,
 sending email notifications, etc. but also provide measures to customize those notifications with provision for
-configurable email templates, grouping of notifications to ease management and so on. 
-**openwisp-notifications** takes care of all this, so you can focus on what matters the most. 
+configurable email templates, grouping of notifications to ease management and so on.
+**openwisp-notifications** takes care of all this, so you can focus on what matters the most.
 
 ------------
 
@@ -135,8 +135,8 @@ to create notifications. An example of usage has been provided below.
        url='https://localhost:8000/admin',
     )
 
-The above code snippet creates and sends a notification to all users belonging to the `Operators` 
-group if they have opted-in to receive notifications. Non-superadmin users receive notifications 
+The above code snippet creates and sends a notification to all users belonging to the `Operators`
+group if they have opted-in to receive notifications. Non-superadmin users receive notifications
 only for organizations which they are a member of.
 
 .. note::
@@ -152,10 +152,11 @@ The complete syntax for ``notify`` is.
     notify.send(actor, recipient, verb, action_object, target, level, description, **kwargs)
 
 .. note::
-    Since ``openwisp-notifications`` uses ``django-notifications`` under the hood, usage of the 
+
+    Since ``openwisp-notifications`` uses ``django-notifications`` under the hood, usage of the
     ``notify signal`` has been kept unaffected to maintain consistency with ``django-notifications``.
-    You can learn more about accepted parameters from `django-notifications documentation 
-    <https://github.com/django-notifications/django-notifications#generating-notifications>`_. 
+    You can learn more about accepted parameters from `django-notifications documentation
+    <https://github.com/django-notifications/django-notifications#generating-notifications>`_.
 
 Additionally Supported Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -167,12 +168,85 @@ Additionally Supported Parameters
 |                 |                                                                             |
 |                 | Defaults to the truncated description.                                      |
 +-----------------+-----------------------------------------------------------------------------+
-|       url       | Adds a URL in email as <br/>                                                | 
+|       url       | Adds a URL in email as <br/>                                                |
 |                 |                                                                             |
 |                 | ``For more information see <url>.`` <br/>                                   |
-|                 |                                                                             | 
+|                 |                                                                             |
 |                 | Default to **None** meaning above message would not be added to the email.  |
 +-----------------+-----------------------------------------------------------------------------+
+|       type      | Set values of other parameters based on predefined setting                  |
+|                 | ``OPENWISP_NOTIFICATION_TYPES``                                             |
+|                 |                                                                             |
+|                 | Defaults to **None** meaning you need to provide other arguments.           |
++-----------------+-----------------------------------------------------------------------------+
+
+Settings
+--------
+
+``OPENSWISP_NOTIFICATION_TYPES``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to define additional notification types.
+
+For example, if you want to add a notification type ``device added`` you can use:
+
+.. code-block:: python
+
+    # In your_project/settings.py
+    OPENSWISP_NOTIFICATION_TYPES = {
+        'custom type': {
+            'level': 'info',
+            'verb': 'added',
+            'name': 'device added',
+            'message': 'configurables/message.md',
+        },
+    }
+
+``OPENWISP_NOTIFICATION_MESSAGE_TEMPLATE``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------------+
+| **type**:    | ``string``                     |
++--------------+--------------------------------+
+| **default**: | ``configurables/message.md``   |
++--------------+--------------------------------+
+
+This setting allows to provide a default markdown formatted message template.
+If a notification type does not define it's message template explicitly, then this message template will be used.
+Extra parameters passed to ``notify`` signal is also available in the message template.
+You can either provide a new template from scratch, or extend the default one.
+An example use case has been demonstrated for reference.
+
+Suppose, you have passed a `url` keyword arguemnt in notify signal as follows.
+
+.. code-block:: python
+    
+    notify.send(
+       sender=admin,
+       type='device added',
+       url='https://localhost:8000/admin',
+    )
+
+Then you can use ``url`` in message template as shown below.
+
+.. code-block:: jinja2
+
+    # In templates/configurables/your_message_template.md
+    {% extends 'configurables/message.md' %}
+    {% block body %}
+        For more info, see {{ url }}.
+    {% endblock body %}
+
+.. note::
+
+    For above code to excute sucessfully you should have configured ``OPENWISP_NOTIFICATION_MESSAGE_TEMPLATE``
+    setting accordingly.
 
 Contributing
 ------------

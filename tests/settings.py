@@ -120,6 +120,14 @@ OPENWISP_ADMIN_THEME_LINKS = [
     },
 ]
 
+OPENWISP_NOTIFICATION_TYPES = {
+    'dummy': {
+        'level': 'dummy level',
+        'verb': 'dummy verb',
+        'name': 'Dummy Notification Type',
+    }
+}
+
 # local settings must be imported before test runner otherwise they'll be ignored
 try:
     from local_settings import *

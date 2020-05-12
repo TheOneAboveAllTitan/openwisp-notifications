@@ -23,6 +23,7 @@ class AbstractNotificationAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'timestamp',
+                    'notification_type',
                     'level',
                     'description',
                     'related_object',

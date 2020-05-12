@@ -8,6 +8,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 from notifications.base.models import AbstractNotification
+from openwisp_notifications.notification_types import get_notification_types_choices
 from swapper import swappable_setting
 
 from openwisp_utils.base import TimeStampedEditableModel, UUIDModel
@@ -17,6 +18,12 @@ User = get_user_model()
 
 class Notification(UUIDModel, AbstractNotification):
     COUNT_CACHE_KEY = 'ow2-unread-notifications-{0}'
+    notification_type = models.CharField(
+        max_length=30,
+        null=True,
+        choices=get_notification_types_choices(),
+        verbose_name="Type",
+    )
 
     class Meta(AbstractNotification.Meta):
         abstract = False
@@ -75,7 +82,7 @@ def send_email_notification(sender, instance, created, **kwargs):
     ):
         return
     # send email
-    subject = instance.data.get('email_subject', instance.description[0:24])
+    subject = (instance.data.get('email_subject', instance.description[0:24])).strip()
     url = instance.data.get('url', '')
     description = instance.description
     if url:
