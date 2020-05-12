@@ -28,7 +28,8 @@ Available features
 ------------------
 
 - `Generate notifications <#generating-notifications>`_
-- TODO: add more
+- Send notifications via email
+- `Configurable and extensible notification types <#registeringunregistering-notification-types>`_
 
 Install development version
 ---------------------------
@@ -158,6 +159,7 @@ The complete syntax for ``notify`` is.
     notify.send(actor, recipient, verb, action_object, target, level, description, **kwargs)
 
 .. note::
+
     Since ``openwisp-notifications`` uses ``django-notifications`` under the hood, usage of the
     ``notify signal`` has been kept unaffected to maintain consistency with ``django-notifications``.
     You can learn more about accepted parameters from `django-notifications documentation
@@ -179,6 +181,94 @@ Additionally Supported Parameters
 |                 |                                                                             |
 |                 | Default to **None** meaning above message would not be added to the email.  |
 +-----------------+-----------------------------------------------------------------------------+
+|       type      | Set values of other parameters based on predefined setting                  |
+|                 | ``OPENWISP_NOTIFICATION_TYPES``                                             |
+|                 |                                                                             |
+|                 | Defaults to **None** meaning you need to provide other arguments.           |
++-----------------+-----------------------------------------------------------------------------+
+
+Registering/Unregistering Notification Types
+--------------------------------------------
+Apart from ``OPENWISP_NOTIFICATION_TYPES``, the module provides registering and unregistering notifications through utility functions
+``openwisp_notifications.types.register_notification_type`` and ``openwisp_notifications.types.unregister_notification_type``. Using
+these functions you can register or unregister notification types from anywhere in your code. 
+
+register_notification_type(dict)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This function is used to register a new notification type from anywhere in your code.
+Syntax:
+
+.. code-block:: python
+
+    register_notification_type(type_name, type_config)
+
++---------------+--------------------------------------------------------------+
+|   Parameter   |                     Description                              |
++---------------+--------------------------------------------------------------+
+|   type_name   | A ``str`` defining name of the notification type.            |
++---------------+--------------------------------------------------------------+
+|  type_config  | A ``dict`` defining configuration of the notification type.  |
++---------------+--------------------------------------------------------------+
+
+An example usage has been shown below.
+
+.. code-block:: python
+
+    from openwisp_notifications.types.register_notification_type
+
+    # Define configuration of your notification type
+    custom_type = {
+            'level': 'info',
+            'verb': 'added',
+            'verbose_name': 'device added',
+            'description': '{opts.target} was {opts.verb} at {opts.timestamp}',
+            'email_subject' : '[{site.name}] A device has been added'
+    }
+
+    # Register your custom notification type
+    register_notification_type('custom_type', custom_type)
+
+.. note::
+
+    It will raise ``ImproperlyConfigured`` exception if a notification type is already registered
+    with same name(not to be confused with verbose_name).
+
+.. note::
+
+    You can use ``site`` and ``opts`` variables while defining ``description`` and ``email_subject``
+    configuration of notification type. They refer to objects of ``django.contrib.sites.models.Site`
+    and ``openwisp_notifications.models.Notification`` repectively. This allows you to use any of their
+    attributes in your configuration.
+
+unregister_notification_type(str)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This function is used to unregister a notification type from anywhere in your code.
+
+Syntax:
+
+.. code-block:: python
+
+    unregister_notification_type(type_name)
+
++---------------+--------------------------------------------------------------+
+|   Parameter   |                     Description                              |
++---------------+--------------------------------------------------------------+
+|   type_name   | A ``str`` defining name of the notification type.            |
++---------------+--------------------------------------------------------------+
+
+An example usage is shown below.
+
+.. code-block:: python
+
+    from openwisp_notifications.types.uregister_notification_type
+
+    # Unregister previously registered notification type
+    unregister_notification_type('custom type')
+
+.. note::
+
+    It will raise ``ImproperlyConfigured`` exception if the concerned notification type is not
+    registered. 
 
 Contributing
 ------------
