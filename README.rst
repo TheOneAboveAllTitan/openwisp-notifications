@@ -31,6 +31,7 @@ Available features
 - Send notifications via email
 - `Configurable and extensible notification types <#registeringunregistering-notification-types>`_
 - `Generalize Notifications <#notification-types>`_
+- `Customizable e-mail template <#OPENWISP_NOTIFICATION_EMAIL_TEMPLATE>`_
 
 Install development version
 ---------------------------
@@ -324,6 +325,60 @@ An example usage is shown below.
 
     It will raise ``ImproperlyConfigured`` exception if the concerned notification type is not
     registered. 
+
+Settings
+--------
+
+OPENWISP_NOTIFICATION_EMAIL_TEMPLATE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-----------+--------------------------------------------------+
+|   type    |  ``str``                                         |
++-----------+--------------------------------------------------+
+|  default  |  ``openwisp_notifications/email_template.html``  |
++-----------+--------------------------------------------------+
+
+This setting takes path to template for email notifications, thus allowing to customize email notification.
+You can either extend the default email template or write you email template from scratch. An example of extending
+default email template to customize styling is shown below.
+
+.. code-block:: jinja2
+    {% extends 'openwisp_notifications/email_template.html' %}
+    {% block styles %}
+    {{block.super}}
+    <style>
+        .background {
+        height: 100%;
+        background: linear-gradient(to bottom, #8ccbbe 50%, #3797a4 50%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        padding: 50px;
+        }
+
+        .mail-header {
+        background-color: #3797a4;
+        color: white;
+        }
+    </style>
+    {% endblock styles %}
+
+Similarly, you can customize HTML of the template by overriding ``body`` block.
+See `openwisp_notifications/email_template.html <https://git.io/JfVpA>`_ for reference implementation.
+
+OPENWISP_NOTIFICATION_EMAIL_LOGO
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-----------+--------------------------------------------------+
+|   type    |  ``str``                                         |
++-----------+--------------------------------------------------+
+|  default  |  `https://git.io/JfVhe` (OpenWISP logo)          |
++-----------+--------------------------------------------------+
+
+This setting take URL of organisation logo to be displayed on email notification.
+
+.. note::
+
+    The URL provided should be publicly accessible on the internet, otherwise logo may not be displayed in email.
 
 Contributing
 ------------

@@ -1,0 +1,86 @@
+{% load static %}
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  {% block styles %}
+  <style type="text/css">
+    .background {
+      height: 100%;
+      background: linear-gradient(to bottom, #bb442c 50%, #464646 50%);
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      padding: 50px;
+    }
+
+    .container {
+      padding: 20px;
+      width: 75%;
+      margin: auto;
+      background-color: whitesmoke;
+      border-radius: 10px;
+    }
+
+    .notification-description {
+      text-align: center;
+    }
+
+    .logo {
+      width: 100px;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 10px;
+    }
+
+    .notification-header{
+      background-color: #464646;
+      color: white;
+    }
+
+    .notification-subject {
+      width: 100%;
+      text-align: right;
+    }
+
+    .notification-subject a {
+      color: white;
+    }
+  </style>
+  {% endblock styles %}
+</head>
+
+<body>
+ {% block bpdy %}
+ 
+  <div class="background">
+    <div class="container">
+      <table style="width: 100%;">
+        <tr class="notification-header">
+          <td><img src="{{logo}}" alt="Organization Logo" id="org-logo" class="logo"></td>
+          <td class="notification-subject">{{ notification.email_subject }}</td>
+        </tr>
+        <tr class="notification-body">
+          <td colspan="2">
+            <p>Greetings {{notification.recipient.username}},</p>
+            <p>You have a new notification from your network : {{site}}</p>
+            <div class="notification-description">
+              <code> {{ notification.message }} </code>
+            </div>
+            <p>You can also view this notifification on the dashboard by following <a href="{{site.domain}}{{admin_url}}" id="admin-url">this link.</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  {% endblock bpdy %}
+</body>
+
+</html>

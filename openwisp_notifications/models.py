@@ -1,3 +1,4 @@
+import openwisp_notifications.settings as app_settings
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
@@ -8,6 +9,7 @@ from django.db import models
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.html import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -131,7 +133,22 @@ def send_email_notification(sender, instance, created, **kwargs):
     if url:
         description += '\n\nFor more information see {0}.'.format(url)
     send_mail(
-        subject, description, settings.DEFAULT_FROM_EMAIL, [instance.recipient.email]
+        subject=subject,
+        message=description,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[instance.recipient.email],
+        html_message=render_to_string(
+            app_settings.OPENWISP_NOTITIFCATION_EMAIL_TEMPLATE,
+            context={
+                'logo': app_settings.OPENWISP_NOTIFICATION_LOGO,
+                'notification': instance,
+                'site': Site.objects.get_current(),
+                'admin_url': reverse(
+                    "admin:openwisp_notifications_notification_change",
+                    args=(instance.id,),
+                ),
+            },
+        ),
     )
     # flag as emailed
     instance.emailed = True

@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import openwisp_notifications.settings as app_settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
@@ -346,3 +347,23 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         with self.subTest('Check unregistration in NOTIFICATION_CHOICES'):
             with self.assertRaises(ImproperlyConfigured):
                 _unregister_notification_choice('test_type')
+
+    def test_notification_type_email(self):
+        self.notification_options.update({'type': 'default'})
+        self._create_notification()
+        # n = notification_queryset.first()
+        email = mail.outbox[0]
+        n = notification_queryset.first()
+        html_message, content_type = email.alternatives.pop()
+        self.assertEqual(email.subject, '[example.com] Default Notification Subject')
+        self.assertEqual(content_type, 'text/html')
+        self.assertIn(
+            f'<img src="{app_settings.OPENWISP_NOTIFICATION_LOGO}" '
+            'alt="Organization Logo" id="org-logo" class="logo">',
+            html_message,
+        )
+        self.assertIn(f'<code> {n.message} </code>', html_message)
+        self.assertIn(
+            f'<a href="example.com/admin/openwisp_notifications/notification/{n.id}/change/" id="admin-url">',
+            html_message,
+        )

@@ -1,0 +1,56 @@
+<style type="text/css">
+        :root {
+            --color1: #bb442c;
+            --color2: #464646;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .body {
+            background: linear-gradient(to bottom, #bb442c 50%, #464646 50%);
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            padding: 20px;
+        }
+
+        .container {
+            padding: 20px;
+            width: 75%;
+            margin: auto;
+        }
+
+        .message {
+            background-color: whitesmoke;
+            border-radius: 10px;
+        }
+
+        .mail-header {
+            padding: 10px;
+            border-radius: 10px 10px 0px 0px;
+        }
+
+        .mail-body {
+            padding: 10px;
+        }
+
+        .notification-description {
+            text-align: center;
+        }
+
+        .color1 {
+            background-color: #bb442c;
+        }
+
+        .color2 {
+            background-color: #464646;
+            color: white;
+        }
+
+        .mail-header .logo {
+            width: 100px;
+            vertical-align: middle;
+        }
+
+        .mail-header .subject {
+            margin-left: 10px;
+        }
+    </style>
