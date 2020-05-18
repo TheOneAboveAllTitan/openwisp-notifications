@@ -27,7 +27,7 @@ Available features
 ------------------
 
 - `Sending notifications <#sending-notifications>`_
-- Email notifications
+- `Email notifications <#openwisp_notification_email_template>`_
 - Web notifications
 - Configurable email theme
 - `Definition of notification types <#notification-types>`_
@@ -336,6 +336,75 @@ An example usage is shown below.
 
     It will raise ``ImproperlyConfigured`` exception if the concerned notification type is not
     registered.
+
+Settings
+--------
+
+``OPENWISP_NOTIFICATION_HTML_EMAIL``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-----------+------------+
+|   type    |  ``bool``  |
++-----------+------------+
+|  default  |  ``True``  |
++-----------+------------+
+
+Toggles HTML rendering of notification message in email notification. 
+
+``OPENWISP_NOTIFICATION_EMAIL_TEMPLATE``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-----------+--------------------------------------------------+
+|   type    |  ``str``                                         |
++-----------+--------------------------------------------------+
+|  default  |  ``openwisp_notifications/email_template.html``  |
++-----------+--------------------------------------------------+
+
+This setting takes the path to the template for email notifications. Thus, making it possible to
+customize email notification.You can either extend the default email template or write your own
+email template from scratch. An example of extending default email template to customize styling is 
+shown below.
+
+.. code-block:: jinja2
+
+    {% extends 'openwisp_notifications/email_template.html' %}
+    {% block styles %}
+    {{block.super}}
+    <style>
+        .background {
+        height: 100%;
+        background: linear-gradient(to bottom, #8ccbbe 50%, #3797a4 50%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        padding: 50px;
+        }
+
+        .mail-header {
+        background-color: #3797a4;
+        color: white;
+        }
+    </style>
+    {% endblock styles %}
+
+Similarly, you can customize the HTML of the template by overriding the ``body`` block.
+See `openwisp_notifications/email_template.html <https://git.io/JfVpA>`_ for reference implementation.
+
+``OPENWISP_NOTIFICATION_EMAIL_LOGO``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-----------+----------------------------------------------------------------------------------------------+
+|   type    |  ``str``                                                                                     |
++-----------+----------------------------------------------------------------------------------------------+
+|  default  |  `OpenWISP logo <https://raw.githubusercontent.com/openwisp/openwisp-notifications/master/ \ |
+|           |  openwisp_notifications/static/openwisp_notifications/images/openwisp-logo.png>`_            |
++-----------+----------------------------------------------------------------------------------------------+
+
+This setting takes the URL of the logo to be displayed on email notification.
+
+.. note::
+
+        Provide a URL which points to the logo on your own web server. Ensure that the URL provided is publicly
+        accessible from the internet. Otherwise, the logo may not be displayed in email.
 
 Contributing
 ------------
