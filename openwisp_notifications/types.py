@@ -6,7 +6,8 @@ DEFAULT_NOTIFICATION_TYPES = {
         'level': 'info',
         'verb': 'default verb',
         'name': 'Default Type',
-        'email_subject': '[openwisp-notificaton] Default Notification Subject',
+        'email_subject': '[{site}] Default Notification Subject',
+        'description': 'Default notification with {opts.verb} and {opts.level}',
     },
 }
 
@@ -39,10 +40,21 @@ def get_notification_choices():
     return choices
 
 
+def get_notification_configuration(notification_type):
+    if not notification_type:
+        return {}
+    try:
+        return NOTIFICATION_TYPES[notification_type]
+    except KeyError:
+        raise ImproperlyConfigured(f'No such Notification Type, {notification_type}')
+
+
 def validate_notification_type(notification_type):
     for key, options in notification_type.items():
         assert 'level' in options
         assert 'verb' in options
+        assert 'description' in options
+        assert 'email_subject' in options
 
 
 def register_notification_type(notification_type):

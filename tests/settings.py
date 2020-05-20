@@ -106,7 +106,8 @@ OPENWISP_NOTIFICATION_TYPES = {
         'level': 'dummy level',
         'verb': 'dummy verb',
         'name': 'Dummy Notification Type',
-        'subject': '[openwisp-notification] Dummy Email Notification',
+        'description': 'Dummy notification reported by {opts.actor}',
+        'email_subject': '[{site}] Dummy Email Notification with {opts.verb}',
     }
 }
 

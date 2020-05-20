@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
@@ -9,12 +10,16 @@ from django.dispatch import receiver
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from notifications.base.models import AbstractNotification
-from openwisp_notifications.notification_types import NOTIFICATION_CHOICES
+from openwisp_notifications.types import (
+    NOTIFICATION_CHOICES,
+    get_notification_configuration,
+)
 from swapper import swappable_setting
 
 from openwisp_utils.base import TimeStampedEditableModel, UUIDModel
 
 User = get_user_model()
+current_site = Site.objects.get_current()
 
 
 class Notification(UUIDModel, AbstractNotification):
@@ -35,14 +40,22 @@ class Notification(UUIDModel, AbstractNotification):
         cache.delete(cls.COUNT_CACHE_KEY.format(user.pk))
 
     @cached_property
-    def short_description(self):
-        return self.description.partition('\n')[0]
+    def notification_description(self):
+        if self.type:
+            config = get_notification_configuration(self.type)
+            return config['description'].format(opts=self)
+        else:
+            return self.description
 
-    @property
+    @cached_property
     def email_subject(self):
-        if self.data.get('email_subject'):
+        if self.type:
+            config = get_notification_configuration(self.type)
+            return config['email_subject'].format(site=current_site, opts=self)
+        elif self.data.get('email_subject', None):
             return self.data.get('email_subject')
-        return self.short_description
+        else:
+            return self.description
 
 
 class NotificationUser(TimeStampedEditableModel):
@@ -90,7 +103,7 @@ def send_email_notification(sender, instance, created, **kwargs):
     # send email
     subject = instance.email_subject
     url = instance.data.get('url', '')
-    description = instance.description
+    description = instance.notification_description
     if url:
         description += '\n\nFor more information see {0}.'.format(url)
     send_mail(

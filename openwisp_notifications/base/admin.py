@@ -12,7 +12,7 @@ class AbstractNotificationAdmin(admin.ModelAdmin):
         'target_object_link',
         'related_object',
     ]
-    list_display = ('short_description', 'read', 'level', 'timesince')
+    list_display = ('notification_description', 'read', 'level', 'timesince')
     list_filter = (
         'level',
         'unread',

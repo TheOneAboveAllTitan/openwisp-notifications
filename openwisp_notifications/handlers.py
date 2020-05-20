@@ -3,10 +3,9 @@ from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.db.models.query import QuerySet
-from django.template.loader import render_to_string
 from django.utils import timezone
 from openwisp_notifications import settings as app_settings
-from openwisp_notifications.notification_types import NOTIFICATION_TYPES
+from openwisp_notifications.types import get_notification_configuration
 from swapper import load_model
 
 User = get_user_model()
@@ -28,27 +27,11 @@ def notify_handler(**kwargs):
     timestamp = kwargs.pop('timestamp', timezone.now())
     recipient = kwargs.pop('recipient', None)
     notification_type = kwargs.pop('type', None)
-    notification_template = NOTIFICATION_TYPES.get(notification_type, {})
+    notification_template = get_notification_configuration(notification_type)
     level = notification_template.get(
         'level', kwargs.pop('level', Notification.LEVELS.info)
     )
     verb = notification_template.get('verb', kwargs.pop('verb', None))
-    message_template = notification_template.get(
-        'message', app_settings.MESSAGE_TEMPLATE
-    )
-
-    if not description:
-        message_context = {
-            'actor': actor,
-            'level': level,
-            'verb': verb,
-        }
-        message_context.update(kwargs)
-        description = render_to_string(message_template, message_context).rstrip()
-
-    kwargs['email_subject'] = notification_template.get(
-        'email_subject', kwargs.get('email_subject', None),
-    )
     target_org = getattr(kwargs.get('target', None), 'organization_id', None)
 
     where = Q(is_superuser=True)

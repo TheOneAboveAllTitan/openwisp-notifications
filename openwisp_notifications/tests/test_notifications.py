@@ -4,19 +4,18 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
-from django.template.loader import render_to_string
 from django.test import TestCase
 from django.utils import timezone
 from django.utils.timesince import timesince
 from openwisp_notifications.handlers import notify_handler
-from openwisp_notifications.notification_types import (
+from openwisp_notifications.signals import notify
+from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
+    get_notification_configuration,
     register_notification_type,
     unregister_notification_choice,
     unregister_notification_type,
 )
-from openwisp_notifications.settings import MESSAGE_TEMPLATE
-from openwisp_notifications.signals import notify
 from swapper import load_model
 
 from openwisp_users.models import Group, OrganizationUser
@@ -240,16 +239,11 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         n = notification_queryset.first()
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
-
-    def test_message_template(self):
-        self.notification_options.pop('description')
-        self._create_notification()
-        n = notification_queryset.first()
-        self.notification_options.update({'actor': self.admin})
-        exp_desc = render_to_string(
-            MESSAGE_TEMPLATE, self.notification_options
-        ).rstrip()
-        self.assertEqual(n.description, exp_desc)
+        self.assertEqual(
+            n.notification_description,
+            'Default notification with default verb and info',
+        )
+        self.assertEqual(n.email_subject, '[example.com] Default Notification Subject')
 
     def test_register_unregister_notification_type(self):
         custom_type = {
@@ -257,8 +251,11 @@ class TestNotifications(TestOrganizationMixin, TestCase):
                 'name': 'Test Notification Type',
                 'level': 'test',
                 'verb': 'testing',
+                'description': '{opts.verb} initiated by {opts.actor} since {opts}',
+                'email_subject': '[{site}] {opts.verb} reported by {opts.actor}',
             }
         }
+
         with self.subTest('Registering new notification type'):
             register_notification_type(custom_type)
             self.notification_options.update({'type': 'test type'})
@@ -266,6 +263,11 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             n = notification_queryset.first()
             self.assertEqual(n.level, 'test')
             self.assertEqual(n.verb, 'testing')
+            self.assertEqual(
+                n.notification_description,
+                'testing initiated by admin since 0\xa0minutes',
+            )
+            self.assertEqual(n.email_subject, '[example.com] testing reported by admin')
 
         with self.subTest('Check registration in NOTIFICATION_CHOICES'):
             notification_choice = NOTIFICATION_CHOICES[-1]
@@ -283,10 +285,13 @@ class TestNotifications(TestOrganizationMixin, TestCase):
 
         with self.subTest('Unregistering "custom type"'):
             unregister_notification_type('test type')
-            self._create_notification()
-            n = notification_queryset.first()
-            self.assertEqual(n.level, 'info')
-            self.assertEqual(n.verb, 'Test Notification')
+            with self.assertRaises(ImproperlyConfigured):
+                get_notification_configuration('test type')
+
+        with self.subTest('Using non existing notification type for new notification'):
+            with self.assertRaises(ImproperlyConfigured):
+                self._create_notification()
+                n = notification_queryset.first()
 
         with self.subTest('Check unregistration in NOTIFICATION_CHOICES'):
             with self.assertRaises(ImproperlyConfigured):

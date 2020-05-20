@@ -1,5 +1,5 @@
 from django.db import migrations, models
-from openwisp_notifications.notification_types import NOTIFICATION_CHOICES
+from openwisp_notifications.types import NOTIFICATION_CHOICES
 
 
 class Migration(migrations.Migration):

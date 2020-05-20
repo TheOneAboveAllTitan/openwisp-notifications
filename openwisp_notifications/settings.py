@@ -5,9 +5,6 @@ CONFIG_DEFAULTS.update({'USE_JSONFIELD': True})
 
 
 ADDITIONAL_NOTIFICATION_TYPES = getattr(settings, 'OPENWISP_NOTIFICATION_TYPES', {})
-MESSAGE_TEMPLATE = getattr(
-    settings, 'OPENWISP_NOTIFICATION_MESSAGE_TEMPLATE', 'configurables/message.md'
-)
 
 
 def get_config():
