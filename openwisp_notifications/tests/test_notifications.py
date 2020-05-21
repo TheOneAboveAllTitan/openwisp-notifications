@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
+from django.template import TemplateDoesNotExist
 from django.test import TestCase
 from django.utils import timezone
 from django.utils.timesince import timesince
@@ -73,7 +74,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             n.target_content_type, ContentType.objects.get_for_model(operator)
         )
         self.assertEqual(n.verb, 'Test Notification')
-        self.assertEqual(n.description, 'Test Notification Description')
+        self.assertEqual(n.message, 'Test Notification Description')
         self.assertEqual(n.recipient, self.admin)
 
     def test_superuser_notifications_disabled(self):
@@ -91,7 +92,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(mail.outbox[0].to, [self.admin.email])
         n = notification_queryset.first()
         self.assertEqual(mail.outbox[0].subject, n.data.get('email_subject'))
-        self.assertIn(n.description, mail.outbox[0].body)
+        self.assertIn(n.message, mail.outbox[0].body)
         self.assertIn(n.data.get('url'), mail.outbox[0].body)
         self.assertIn('https://', n.data.get('url'))
 
@@ -171,7 +172,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.notification_options.pop('email_subject')
         self._create_notification()
         n = notification_queryset.first()
-        self.assertEqual(mail.outbox[0].subject, n.description[0:24])
+        self.assertEqual(mail.outbox[0].subject, n.message[0:24])
 
     def test_handler_optional_tag(self):
         operator = self._create_operator()
@@ -240,12 +241,11 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
         self.assertEqual(
-            n.notification_description,
-            'Default notification with default verb and info',
+            n.message, 'Default notification with default verb and info',
         )
         self.assertEqual(n.email_subject, '[example.com] Default Notification Subject')
 
-    def test_notification_type_validation(self):
+    def test_misc_notification_type_validation(self):
         with self.subTest("Registering with incomplete notification configuration."):
             with self.assertRaises(AssertionError):
                 register_notification_type('test_type', dict())
@@ -262,13 +262,41 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             with self.assertRaises(ImproperlyConfigured):
                 unregister_notification_type(dict())
 
+    def test_notification_type_message_template(self):
+        message_template = {
+            'level': 'info',
+            'verb': 'message template verb',
+            'name': 'Message Template Type',
+            'email_subject': '[{site}] Messsage Template Subject',
+        }
+
+        with self.subTest("Register type with non existent message template"):
+            with self.assertRaises(TemplateDoesNotExist):
+                message_template.update({'message_template': 'wrong/path.md'})
+                register_notification_type('message_template', message_template)
+
+        with self.subTest("Registering type with message template"):
+            message_template.update(
+                {'message_template': 'openwisp_notifications/default_message.md'}
+            )
+            register_notification_type('message_template', message_template)
+            self.notification_options.update({'type': 'message_template'})
+            self._create_notification()
+            n = notification_queryset.first()
+            self.assertEqual(n.type, 'message_template')
+            self.assertEqual(n.email_subject, '[example.com] Messsage Template Subject')
+            self.assertEqual(
+                n.message,
+                'info : message template verb \n\nadmin message template verb',
+            )
+
     def test_register_unregister_notification_type(self):
         test_type = {
             'verbose_name': 'Test Notification Type',
             'level': 'test',
             'verb': 'testing',
-            'description': '{opts.verb} initiated by {opts.actor} since {opts}',
-            'email_subject': '[{site}] {opts.verb} reported by {opts.actor}',
+            'description': '{notification.verb} initiated by {notification.actor} since {notification}',
+            'email_subject': '[{site}] {notification.verb} reported by {notification.actor}',
         }
 
         with self.subTest('Registering new notification type'):
@@ -279,8 +307,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             self.assertEqual(n.level, 'test')
             self.assertEqual(n.verb, 'testing')
             self.assertEqual(
-                str(n.notification_description),
-                'testing initiated by admin since 0\xa0minutes',
+                str(n.message), 'testing initiated by admin since 0\xa0minutes',
             )
             self.assertEqual(n.email_subject, '[example.com] testing reported by admin')
 

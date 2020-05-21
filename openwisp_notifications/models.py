@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 from django.db import models
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from django.template.loader import render_to_string
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from notifications.base.models import AbstractNotification
@@ -39,10 +40,15 @@ class Notification(UUIDModel, AbstractNotification):
         cache.delete(cls.COUNT_CACHE_KEY.format(user.pk))
 
     @cached_property
-    def notification_description(self):
+    def message(self):
         if self.type:
             config = get_notification_configuration(self.type)
-            return config['description'].format(opts=self)
+            if 'description' in config:
+                return config['description'].format(notification=self)
+            else:
+                return render_to_string(
+                    config['message_template'], context=dict(notification=self)
+                ).strip()
         else:
             return self.description
 
@@ -51,12 +57,12 @@ class Notification(UUIDModel, AbstractNotification):
         if self.type:
             config = get_notification_configuration(self.type)
             return config['email_subject'].format(
-                site=Site.objects.get_current(), opts=self
+                site=Site.objects.get_current(), notification=self
             )
         elif self.data.get('email_subject', None):
             return self.data.get('email_subject')
         else:
-            return self.description
+            return self.message
 
 
 class NotificationUser(TimeStampedEditableModel):
@@ -104,7 +110,7 @@ def send_email_notification(sender, instance, created, **kwargs):
     # send email
     subject = instance.email_subject
     url = instance.data.get('url', '')
-    description = instance.notification_description
+    description = instance.message
     if url:
         description += '\n\nFor more information see {0}.'.format(url)
     send_mail(
