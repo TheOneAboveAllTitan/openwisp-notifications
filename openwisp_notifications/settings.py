@@ -4,9 +4,6 @@ from notifications.settings import CONFIG_DEFAULTS
 CONFIG_DEFAULTS.update({'USE_JSONFIELD': True})
 
 
-ADDITIONAL_NOTIFICATION_TYPES = getattr(settings, 'OPENWISP_NOTIFICATION_TYPES', {})
-
-
 def get_config():
     user_config = getattr(settings, 'OPENWISP_NOTIFICATIONS_CONFIG', {})
     config = CONFIG_DEFAULTS.copy()

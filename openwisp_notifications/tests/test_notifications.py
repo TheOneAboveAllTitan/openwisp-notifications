@@ -11,9 +11,9 @@ from openwisp_notifications.handlers import notify_handler
 from openwisp_notifications.signals import notify
 from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
+    _unregister_notification_choice,
     get_notification_configuration,
     register_notification_type,
-    unregister_notification_choice,
     unregister_notification_type,
 )
 from swapper import load_model
@@ -245,34 +245,53 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         )
         self.assertEqual(n.email_subject, '[example.com] Default Notification Subject')
 
+    def test_notification_type_validation(self):
+        with self.subTest("Registering with incomplete notification configuration."):
+            with self.assertRaises(AssertionError):
+                register_notification_type('test_type', dict())
+
+        with self.subTest("Registering with improper notification type name"):
+            with self.assertRaises(ImproperlyConfigured):
+                register_notification_type(['test_type'], dict())
+
+        with self.subTest("Registering with improper notification configuration"):
+            with self.assertRaises(ImproperlyConfigured):
+                register_notification_type('test_type', tuple())
+
+        with self.subTest('Unregistering with improper notification type name'):
+            with self.assertRaises(ImproperlyConfigured):
+                unregister_notification_type(dict())
+
     def test_register_unregister_notification_type(self):
-        custom_type = {
-            'test type': {
-                'name': 'Test Notification Type',
-                'level': 'test',
-                'verb': 'testing',
-                'description': '{opts.verb} initiated by {opts.actor} since {opts}',
-                'email_subject': '[{site}] {opts.verb} reported by {opts.actor}',
-            }
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'test',
+            'verb': 'testing',
+            'description': '{opts.verb} initiated by {opts.actor} since {opts}',
+            'email_subject': '[{site}] {opts.verb} reported by {opts.actor}',
         }
 
         with self.subTest('Registering new notification type'):
-            register_notification_type(custom_type)
-            self.notification_options.update({'type': 'test type'})
+            register_notification_type('test_type', test_type)
+            self.notification_options.update({'type': 'test_type'})
             self._create_notification()
             n = notification_queryset.first()
             self.assertEqual(n.level, 'test')
             self.assertEqual(n.verb, 'testing')
             self.assertEqual(
-                n.notification_description,
+                str(n.notification_description),
                 'testing initiated by admin since 0\xa0minutes',
             )
             self.assertEqual(n.email_subject, '[example.com] testing reported by admin')
 
+        with self.subTest('Re-registering a notification type'):
+            with self.assertRaises(ImproperlyConfigured):
+                register_notification_type('test_type', test_type)
+
         with self.subTest('Check registration in NOTIFICATION_CHOICES'):
             notification_choice = NOTIFICATION_CHOICES[-1]
             self.assertTupleEqual(
-                notification_choice, ('test type', 'Test Notification Type')
+                notification_choice, ('test_type', 'Test Notification Type')
             )
 
         with self.subTest('Unregistering a notification type which does not exists'):
@@ -281,12 +300,12 @@ class TestNotifications(TestOrganizationMixin, TestCase):
 
         with self.subTest('Unregistering a notification choice which does not exists'):
             with self.assertRaises(ImproperlyConfigured):
-                unregister_notification_choice('wrong type')
+                _unregister_notification_choice('wrong type')
 
-        with self.subTest('Unregistering "custom type"'):
-            unregister_notification_type('test type')
+        with self.subTest('Unregistering "test_type"'):
+            unregister_notification_type('test_type')
             with self.assertRaises(ImproperlyConfigured):
-                get_notification_configuration('test type')
+                get_notification_configuration('test_type')
 
         with self.subTest('Using non existing notification type for new notification'):
             with self.assertRaises(ImproperlyConfigured):
@@ -295,4 +314,4 @@ class TestNotifications(TestOrganizationMixin, TestCase):
 
         with self.subTest('Check unregistration in NOTIFICATION_CHOICES'):
             with self.assertRaises(ImproperlyConfigured):
-                unregister_notification_choice('test type')
+                _unregister_notification_choice('test_type')

@@ -19,7 +19,6 @@ from swapper import swappable_setting
 from openwisp_utils.base import TimeStampedEditableModel, UUIDModel
 
 User = get_user_model()
-current_site = Site.objects.get_current()
 
 
 class Notification(UUIDModel, AbstractNotification):
@@ -51,7 +50,9 @@ class Notification(UUIDModel, AbstractNotification):
     def email_subject(self):
         if self.type:
             config = get_notification_configuration(self.type)
-            return config['email_subject'].format(site=current_site, opts=self)
+            return config['email_subject'].format(
+                site=Site.objects.get_current(), opts=self
+            )
         elif self.data.get('email_subject', None):
             return self.data.get('email_subject')
         else:

@@ -1,7 +1,6 @@
 from django.core.exceptions import ImproperlyConfigured
-from openwisp_notifications.settings import ADDITIONAL_NOTIFICATION_TYPES
 
-DEFAULT_NOTIFICATION_TYPES = {
+NOTIFICATION_TYPES = {
     'default': {
         'level': 'info',
         'verb': 'default verb',
@@ -11,33 +10,7 @@ DEFAULT_NOTIFICATION_TYPES = {
     },
 }
 
-
-def deep_merge_dicts(dict1, dict2):
-    result = dict1.copy()
-    for key, value in dict2.items():
-        if isinstance(value, dict):
-            node = result.get(key, {})
-            result[key] = deep_merge_dicts(node, value)
-        else:
-            result[key] = value
-    return result
-
-
-def get_notification_types():
-    notification_types = deep_merge_dicts(
-        DEFAULT_NOTIFICATION_TYPES, ADDITIONAL_NOTIFICATION_TYPES
-    )
-    validate_notification_type(notification_types)
-    return notification_types
-
-
-def get_notification_choices():
-    notification_types = NOTIFICATION_TYPES
-    choices = []
-    for key in sorted(notification_types.keys()):
-        name = notification_types[key].get('name', key)
-        choices.append((key, name))
-    return choices
+NOTIFICATION_CHOICES = [('default', 'Default Type')]
 
 
 def get_notification_configuration(notification_type):
@@ -49,42 +22,53 @@ def get_notification_configuration(notification_type):
         raise ImproperlyConfigured(f'No such Notification Type, {notification_type}')
 
 
-def validate_notification_type(notification_type):
-    for key, options in notification_type.items():
-        assert 'level' in options
-        assert 'verb' in options
-        assert 'description' in options
-        assert 'email_subject' in options
+def _validate_notification_type(type_config):
+    options = type_config.keys()
+    assert 'level' in options
+    assert 'verb' in options
+    assert 'description' in options
+    assert 'email_subject' in options
 
 
-def register_notification_type(notification_type):
-    validate_notification_type(notification_type)
-    NOTIFICATION_TYPES.update(notification_type)
-    register_notification_choice(notification_type)
+def register_notification_type(type_name, type_config):
+    """
+    Registers a new notification type.
+    register_notification_type(str,dict)
+    """
+    if not isinstance(type_name, str):
+        raise ImproperlyConfigured('Notification Type name should be type `str`.')
+    if not isinstance(type_config, dict):
+        raise ImproperlyConfigured(
+            'Notification Type configuration should be type `dict`.'
+        )
+    if type_name in NOTIFICATION_TYPES:
+        raise ImproperlyConfigured(
+            f'{type_name} is an already registered Notification Type.'
+        )
+
+    _validate_notification_type(type_config)
+    NOTIFICATION_TYPES.update({type_name: type_config})
+    _register_notification_choice(type_name, type_config)
 
 
-def unregister_notification_type(notification_type):
-    try:
-        NOTIFICATION_TYPES.pop(notification_type)
-    except KeyError:
-        raise ImproperlyConfigured(f'No such Notification Type, {notification_type}')
-    else:
-        unregister_notification_choice(notification_type)
+def unregister_notification_type(type_name):
+    if not isinstance(type_name, str):
+        raise ImproperlyConfigured('Notification Type name should be type `str`')
+    if type_name not in NOTIFICATION_TYPES:
+        raise ImproperlyConfigured(f'No such Notification Type, {type_name}')
+
+    NOTIFICATION_TYPES.pop(type_name)
+    _unregister_notification_choice(type_name)
 
 
-def register_notification_choice(notification_type):
-    key, options = notification_type.popitem()
-    name = options.get('name', key)
-    NOTIFICATION_CHOICES.append((key, name))
+def _register_notification_choice(type_name, type_config):
+    name = type_config.get('verbose_name', type_name)
+    NOTIFICATION_CHOICES.append((type_name, name))
 
 
-def unregister_notification_choice(notification_type):
+def _unregister_notification_choice(notification_type):
     for index, (key, name) in enumerate(NOTIFICATION_CHOICES):
         if key == notification_type:
             NOTIFICATION_CHOICES.pop(index)
             return
     raise ImproperlyConfigured(f'No such Notification Choice {notification_type}')
-
-
-NOTIFICATION_TYPES = get_notification_types()
-NOTIFICATION_CHOICES = get_notification_choices()
