@@ -11,8 +11,9 @@ class AbstractNotificationAdmin(admin.ModelAdmin):
         'actor_object_link',
         'target_object_link',
         'related_object',
+        'message',
     ]
-    list_display = ('notification_description', 'read', 'level', 'timesince')
+    list_display = ('message', 'read', 'level', 'timesince')
     list_filter = (
         'level',
         'unread',
@@ -25,7 +26,7 @@ class AbstractNotificationAdmin(admin.ModelAdmin):
                     'timestamp',
                     'type',
                     'level',
-                    'description',
+                    'message',
                     'related_object',
                     'emailed',
                 )

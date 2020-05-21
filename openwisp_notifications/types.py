@@ -1,4 +1,5 @@
 from django.core.exceptions import ImproperlyConfigured
+from django.template.loader import get_template
 
 NOTIFICATION_TYPES = {
     'default': {
@@ -6,7 +7,8 @@ NOTIFICATION_TYPES = {
         'verb': 'default verb',
         'name': 'Default Type',
         'email_subject': '[{site}] Default Notification Subject',
-        'description': 'Default notification with {opts.verb} and {opts.level}',
+        'message': 'Default notification with {notification.verb} and {notification.level}',
+        'message_template': 'openwisp_notifications/default_message.md',
     },
 }
 
@@ -26,8 +28,11 @@ def _validate_notification_type(type_config):
     options = type_config.keys()
     assert 'level' in options
     assert 'verb' in options
-    assert 'description' in options
     assert 'email_subject' in options
+    assert ('message' in options) or ('message_template' in options)
+
+    if 'message_template' in options:
+        get_template(type_config['message_template'])
 
 
 def register_notification_type(type_name, type_config):
