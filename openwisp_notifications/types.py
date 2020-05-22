@@ -7,7 +7,7 @@ NOTIFICATION_TYPES = {
         'verb': 'default verb',
         'name': 'Default Type',
         'email_subject': '[{site}] Default Notification Subject',
-        'description': 'Default notification with {notification.verb} and {notification.level}',
+        'message': 'Default notification with {notification.verb} and {notification.level}',
         'message_template': 'openwisp_notifications/default_message.md',
     },
 }
@@ -29,7 +29,7 @@ def _validate_notification_type(type_config):
     assert 'level' in options
     assert 'verb' in options
     assert 'email_subject' in options
-    assert ('description' in options) or ('message_template' in options)
+    assert ('message' in options) or ('message_template' in options)
 
     if 'message_template' in options:
         get_template(type_config['message_template'])

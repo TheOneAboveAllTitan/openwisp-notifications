@@ -43,8 +43,8 @@ class Notification(UUIDModel, AbstractNotification):
     def message(self):
         if self.type:
             config = get_notification_configuration(self.type)
-            if 'description' in config:
-                return config['description'].format(notification=self)
+            if 'message' in config:
+                return config['message'].format(notification=self)
             else:
                 return render_to_string(
                     config['message_template'], context=dict(notification=self)
@@ -109,7 +109,7 @@ def send_email_notification(sender, instance, created, **kwargs):
         return
     # send email
     subject = instance.email_subject
-    url = instance.data.get('url', '')
+    url = instance.data.get('url', '') if instance.data else None
     description = instance.message
     if url:
         description += '\n\nFor more information see {0}.'.format(url)

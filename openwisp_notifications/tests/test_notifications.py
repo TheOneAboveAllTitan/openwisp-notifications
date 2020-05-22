@@ -246,15 +246,15 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(n.email_subject, '[example.com] Default Notification Subject')
 
     def test_misc_notification_type_validation(self):
-        with self.subTest("Registering with incomplete notification configuration."):
+        with self.subTest('Registering with incomplete notification configuration.'):
             with self.assertRaises(AssertionError):
                 register_notification_type('test_type', dict())
 
-        with self.subTest("Registering with improper notification type name"):
+        with self.subTest('Registering with improper notification type name'):
             with self.assertRaises(ImproperlyConfigured):
                 register_notification_type(['test_type'], dict())
 
-        with self.subTest("Registering with improper notification configuration"):
+        with self.subTest('Registering with improper notification configuration'):
             with self.assertRaises(ImproperlyConfigured):
                 register_notification_type('test_type', tuple())
 
@@ -270,12 +270,12 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             'email_subject': '[{site}] Messsage Template Subject',
         }
 
-        with self.subTest("Register type with non existent message template"):
+        with self.subTest('Register type with non existent message template'):
             with self.assertRaises(TemplateDoesNotExist):
                 message_template.update({'message_template': 'wrong/path.md'})
                 register_notification_type('message_template', message_template)
 
-        with self.subTest("Registering type with message template"):
+        with self.subTest('Registering type with message template'):
             message_template.update(
                 {'message_template': 'openwisp_notifications/default_message.md'}
             )
@@ -295,7 +295,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             'verbose_name': 'Test Notification Type',
             'level': 'test',
             'verb': 'testing',
-            'description': '{notification.verb} initiated by {notification.actor} since {notification}',
+            'message': '{notification.verb} initiated by {notification.actor} since {notification}',
             'email_subject': '[{site}] {notification.verb} reported by {notification.actor}',
         }
 

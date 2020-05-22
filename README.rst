@@ -205,16 +205,16 @@ These properties can be configured for each notification type:
 +------------------+--------------------------------------------------------------------------------+
 |      name        | Sets display name of notification type.                                        |
 +------------------+--------------------------------------------------------------------------------+
-|   description    | Sets ``description`` attribute of the notification.                            | 
+|     message      | Sets ``message`` attribute of the notification.                                | 
 +------------------+--------------------------------------------------------------------------------+
 |  email_subject   | Sets subject of the email notification.                                        |
 +------------------+--------------------------------------------------------------------------------+
-| message_template | Path to file having template for description of the notification.              |
+| message_template | Path to file having template for message of the notification.                  |
 +------------------+--------------------------------------------------------------------------------+
 
 .. note::
-    A notification type configuration should contain atleast one of ``description`` or ``message_template``
-    settings. If both of them are present, ``description`` is given preference over ``message_template``. 
+    A notification type configuration should contain atleast one of ``message`` or ``message_template``
+    settings. If both of them are present, ``message`` is given preference over ``message_template``. 
 
 Defining ``message_template``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -269,7 +269,7 @@ An example usage has been shown below.
         'level': 'info',
         'verb': 'added',
         'verbose_name': 'device added',
-        'description': '{notification.target} was {notification.verb} at {notification.timestamp}',
+        'message': '{notification.target} was {notification.verb} at {notification.timestamp}',
         'email_subject' : '[{site.name}] A device has been added'
     }
 
@@ -283,7 +283,7 @@ An example usage has been shown below.
 
 .. note::
 
-    You can use ``site`` and ``notification`` variables while defining ``description`` and ``email_subject``
+    You can use ``site`` and ``notification`` variables while defining ``message`` and ``email_subject``
     configuration of notification type. They refer to objects of ``django.contrib.sites.models.Site`
     and ``openwisp_notifications.models.Notification`` repectively. This allows you to use any of their
     attributes in your configuration.
