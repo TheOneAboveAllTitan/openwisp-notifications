@@ -240,9 +240,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         n = notification_queryset.first()
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
-        self.assertEqual(
-            n.message, 'Default notification with default verb and info',
-        )
+        self.assertIn('<p>Default notification with default verb and info', n.message)
         self.assertEqual(n.email_subject, '[example.com] Default Notification Subject')
 
     def test_misc_notification_type_validation(self):
@@ -287,7 +285,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             self.assertEqual(n.email_subject, '[example.com] Messsage Template Subject')
             self.assertEqual(
                 n.message,
-                'info : message template verb \n\nadmin message template verb',
+                '<p>info : message template verb </p>\n<p>admin message template verb</p>',
             )
 
     def test_register_unregister_notification_type(self):
@@ -307,7 +305,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             self.assertEqual(n.level, 'test')
             self.assertEqual(n.verb, 'testing')
             self.assertEqual(
-                str(n.message), 'testing initiated by admin since 0\xa0minutes',
+                n.message, '<p>testing initiated by admin since 0\xa0minutes</p>',
             )
             self.assertEqual(n.email_subject, '[example.com] testing reported by admin')
 
