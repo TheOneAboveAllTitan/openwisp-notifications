@@ -240,7 +240,9 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         n = notification_queryset.first()
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
-        self.assertIn('<p>Default notification with default verb and info', n.message)
+        self.assertIn(
+            'Default notification with default verb and level info by', n.message
+        )
         self.assertEqual(n.email_subject, '[example.com] Default Notification Subject')
 
     def test_misc_notification_type_validation(self):
@@ -283,10 +285,14 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             n = notification_queryset.first()
             self.assertEqual(n.type, 'message_template')
             self.assertEqual(n.email_subject, '[example.com] Messsage Template Subject')
-            self.assertEqual(
-                n.message,
-                '<p>info : message template verb </p>\n<p>admin message template verb</p>',
+
+        with self.subTest('Links in notification message'):
+            exp_message = (
+                '<p>info : None message template verb </p>\n'
+                f'<p><a href="/admin/openwisp_users/user/{self.admin.id}/change/">admin</a>'
+                '\nreports\n<a href="#">None</a>\nmessage template verb.</p>'
             )
+            self.assertEqual(n.message, exp_message)
 
     def test_register_unregister_notification_type(self):
         test_type = {
