@@ -2,7 +2,7 @@ from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html
 
 
-def _get_object_link(obj, field, html=True):
+def _get_object_link(obj, field, html=True, url_only=False):
     content_type = getattr(obj, f'{field}_content_type', None)
     object_id = getattr(obj, f'{field}_object_id', None)
     try:
@@ -14,6 +14,9 @@ def _get_object_link(obj, field, html=True):
             return url
         return format_html(f'<a href="{url}" id="{field}-object-url">{object_id}</a>')
     except NoReverseMatch:
-        return object_id
+        fallback_content = object_id
     except AttributeError:
-        return '-'
+        fallback_content = '-'
+    if url_only:
+        return '#'
+    return fallback_content
