@@ -32,7 +32,6 @@ Available features
 - Configurable email theme
 - `Definition of notification types <#notification-types>`_
 - `Possibility to register new notification types <#registering--unregistering-notification-types>`_
-- TODO: add more
 
 Install development version
 ---------------------------
