@@ -16,7 +16,7 @@ from django.utils.timesince import timesince
 from openwisp_notifications import settings as app_settings
 from openwisp_notifications.handlers import notify_handler
 from openwisp_notifications.signals import notify
-from openwisp_notifications.swapper import load_model
+from openwisp_notifications.swapper import load_model, swapper_load_model
 from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
     _unregister_notification_choice,
@@ -26,15 +26,19 @@ from openwisp_notifications.types import (
 )
 from openwisp_notifications.utils import _get_absolute_url
 
-from openwisp_users.models import Group, OrganizationUser
 from openwisp_users.tests.utils import TestOrganizationMixin
 
 User = get_user_model()
 
 Notification = load_model('Notification')
-notification_queryset = Notification.objects.order_by('-timestamp')
+NotificationSetting = load_model('NotificationSetting')
+
+OrganizationUser = swapper_load_model('openwisp_users', 'OrganizationUser')
+Group = swapper_load_model('openwisp_users', 'Group')
+
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
+notification_queryset = Notification.objects.order_by('-timestamp')
 
 
 class TestNotifications(TestOrganizationMixin, TestCase):
@@ -109,10 +113,15 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(n.email_subject, f'Error subject: {error}')
 
     def test_superuser_notifications_disabled(self):
-        self.assertEqual(self.admin.notificationuser.email, True)
-        self.admin.notificationuser.receive = False
-        self.admin.notificationuser.save()
-        self.assertEqual(self.admin.notificationuser.email, False)
+        self.notification_options.update({'type': 'default'})
+        notification_preference = NotificationSetting.objects.get(
+            user_id=self.admin.pk, organization_id=None, type='default'
+        )
+        self.assertEqual(notification_preference.email, True)
+        notification_preference.web = False
+        notification_preference.save()
+        notification_preference.refresh_from_db()
+        self.assertEqual(notification_preference.email, False)
         self._create_notification()
         n = notification_queryset.first()
         self.assertFalse(n.emailed)
@@ -128,8 +137,12 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertIn('https://', n.data.get('url'))
 
     def test_email_disabled(self):
-        self.admin.notificationuser.email = False
-        self.admin.notificationuser.save()
+        self.notification_options.update({'type': 'default'})
+        notification_preference = NotificationSetting.objects.get(
+            user_id=self.admin.pk, organization_id=None, type='default'
+        )
+        notification_preference.email = False
+        notification_preference.save()
         self._create_notification()
         self.admin.email = ''
         self.assertEqual(Notification.objects.count(), 1)
@@ -143,6 +156,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_group_recipient(self):
+        org = self._get_org()
         operator = self._get_operator()
         user = self._create_user(
             username='user', email='user@user.com', first_name='User', last_name='user'
@@ -151,7 +165,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         op_group.user_set.add(operator)
         op_group.user_set.add(user)
         op_group.save()
-        self.notification_options.update({'recipient': op_group})
+        self.notification_options.update({'recipient': op_group, 'type': 'default'})
         recipients = (operator, user)
 
         # Test for group with no target object
@@ -216,12 +230,12 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(n.action_object_object_id, str(operator.id))
 
     def test_organization_recipient(self):
+        self.notification_options.update({'type': 'default'})
         testorg = self._create_org()
         operator = self._create_operator()
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=operator, organization=testorg)
-        self.assertIsNotNone(operator.notificationuser)
         self.notification_options.pop('recipient')
         recipents = (self.admin, operator)
         operator.organization_id = testorg.id
@@ -236,6 +250,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
 
     def test_no_organization(self):
         # Tests no target object is present
+        self.notification_options.update({'type': 'default'})
         self._create_org_user()
         user = self._create_user(
             username='user',
@@ -297,7 +312,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         message_template = {
             'level': 'info',
             'verb': 'message template verb',
-            'name': 'Message Template Type',
+            'verbose_name': 'Message Template Type',
             'email_subject': '[{site.name}] Messsage Template Subject',
         }
 

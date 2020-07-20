@@ -16,4 +16,14 @@ def get_api_urls(api_views=None):
             views.notification_read_redirect,
             name='notification_read_redirect',
         ),
+        path(
+            'setting/',
+            views.notification_setting_list,
+            name='notification_setting_list',
+        ),
+        path(
+            'setting/<uuid:pk>/',
+            views.notification_setting,
+            name='notification_setting',
+        ),
     ]

@@ -3,6 +3,35 @@ from django.contrib.sites.models import Site
 from django.urls import NoReverseMatch, reverse
 
 
+class NotificationException(Exception):
+    pass
+
+
+class NotificationSettingAdminMixin:
+    fields = ['type', 'organization', 'web', 'email']
+    readonly_fields = [
+        'type',
+        'organization',
+    ]
+
+    def get_readonly_fields(self, request, obj=None):
+        if request.user.is_superuser:
+            return list()
+        else:
+            return self.readonly_fields
+
+    def has_add_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == 'organization':
+            kwargs['empty_label'] = 'All'
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
+
 def _get_object_link(obj, field, url_only=False, absolute_url=False, *args, **kwargs):
     related_obj = getattr(obj, field)
     try:

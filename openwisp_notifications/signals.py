@@ -13,3 +13,6 @@ notify = Signal(
         'data',
     ]
 )
+
+notification_type_registered = Signal(providing_args=['notification_type'])
+notification_type_unregistered = Signal(providing_args=['notification_type'])

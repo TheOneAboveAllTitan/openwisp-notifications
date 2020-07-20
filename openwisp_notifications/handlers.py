@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.db.models.query import QuerySet
@@ -13,8 +11,8 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 from openwisp_notifications import settings as app_settings
 from openwisp_notifications.exceptions import NotificationRenderException
-from openwisp_notifications.swapper import load_model
-from openwisp_notifications.tasks import delete_obsolete_notifications
+from openwisp_notifications import tasks
+from openwisp_notifications.swapper import load_model, swapper_load_model
 from openwisp_notifications.types import get_notification_configuration
 from openwisp_notifications.websockets import handlers as ws_handlers
 
@@ -24,6 +22,11 @@ EXTRA_DATA = app_settings.get_config()['USE_JSONFIELD']
 
 Notification = load_model('Notification')
 NotificationUser = load_model('NotificationUser')
+NotificationSetting = load_model('NotificationSetting')
+
+OrganizationUser = swapper_load_model('openwisp_users', 'OrganizationUser')
+Organization = swapper_load_model('openwisp_users', 'Organization')
+Group = swapper_load_model('openwisp_users', 'Group')
 
 
 def notify_handler(**kwargs):
@@ -50,8 +53,16 @@ def notify_handler(**kwargs):
     if target_org:
         where = where | (Q(is_staff=True) & Q(openwisp_users_organization=target_org))
         where_group = Q(openwisp_users_organization=target_org)
-    where_group = where_group & Q(notificationuser__receive=True)
-    where = where & Q(notificationuser__receive=True)
+
+    if notification_type:
+        # We can only find notification setting if notification type is present.
+        notification_setting = Q(
+            notificationsetting__web=True,
+            notificationsetting__type=notification_type,
+            notificationsetting__organization_id=target_org,
+        )
+        where = where & notification_setting
+        where_group = where_group & notification_setting
 
     if recipient:
         # Check if recipient is User, Group or QuerySet
@@ -63,7 +74,7 @@ def notify_handler(**kwargs):
             recipients = [recipient]
     else:
         recipients = (
-            User.objects.select_related('notificationuser')
+            User.objects.prefetch_related('notificationsetting_set')
             .order_by('date_joined')
             .filter(where)
         )
@@ -102,22 +113,25 @@ def notify_handler(**kwargs):
     return notification_list
 
 
-@receiver(post_save, sender=User, dispatch_uid='create_notificationuser')
-def create_notificationuser_settings(sender, instance, **kwargs):
-    try:
-        instance.notificationuser
-    except ObjectDoesNotExist:
-        NotificationUser.objects.create(user=instance)
-
-
 @receiver(post_save, sender=Notification, dispatch_uid='send_email_notification')
 def send_email_notification(sender, instance, created, **kwargs):
-    # Abort if new notification is not created or
-    # notification recipient opted out of email notifications
-    if not created or not (
-        instance.recipient.notificationuser.email and instance.recipient.email
-    ):
+    # Abort if a new notification is not created
+    if not created:
         return
+    # Get email preference of user for this type of notification
+    if instance.type:
+        target_org = getattr(kwargs.get('target', None), 'organization_id', None)
+        email_preference = instance.recipient.notificationsetting_set.get(
+            organization=target_org, type=instance.type
+        ).email
+    else:
+        # We can not check email preferences if notification type is absent,
+        # therefor send email anyway.
+        email_preference = True
+
+    if not (email_preference and instance.recipient.email):
+        return
+
     try:
         subject = instance.email_subject
     except NotificationRenderException:
@@ -182,6 +196,51 @@ def notification_related_object_deleted(sender, instance, **kwargs):
     if instance_id:
         instance_model = instance._meta.model_name
         instance_app_label = instance._meta.app_label
-        delete_obsolete_notifications.delay(
+        tasks.delete_obsolete_notifications.delay(
             instance_app_label, instance_model, instance_id
         )
+
+
+def notification_type_registered_handler(sender, notification_type, **kwargs):
+    tasks.ns_register_notification_type.delay(notification_type)
+
+
+def notification_type_unregistered_handler(sender, notification_type, **kwargs):
+    tasks.ns_unregister_notification_type.delay(notification_type)
+
+
+@receiver(
+    post_save,
+    sender=OrganizationUser,
+    dispatch_uid='create_orguser_notificaton_setting',
+)
+def notification_setting_org_user_created(instance, created, **kwargs):
+    if created:
+        tasks.ns_organization_user_added.delay(
+            instance_user_id=instance.user_id, instance_org_id=instance.organization_id
+        )
+
+
+@receiver(
+    post_delete,
+    sender=OrganizationUser,
+    dispatch_uid='delete_orguser_notificaton_setting',
+)
+def notification_setting_delete_org_user(instance, **kwargs):
+    tasks.ns_organization_user_deleted.delay(
+        instance_user_id=instance.user_id, instance_org_id=instance.organization_id
+    )
+
+
+@receiver(post_save, sender=User, dispatch_uid='superuser_notification_setting')
+def notification_setting_user_created(instance, created, **kwargs):
+    if created:
+        tasks.ns_user_created.delay(instance.pk, instance.is_superuser)
+
+
+@receiver(
+    post_save, sender=Organization, dispatch_uid='org_created_notification_setting'
+)
+def notification_setting_org_created(created, instance, **kwargs):
+    if created:
+        tasks.ns_organization_created.delay(instance.pk)

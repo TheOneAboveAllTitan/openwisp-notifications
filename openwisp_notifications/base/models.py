@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.db import models
+from django.db.models.constraints import UniqueConstraint
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.functional import cached_property
@@ -18,7 +19,8 @@ from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
     get_notification_configuration,
 )
-from openwisp_notifications.utils import _get_absolute_url, _get_object_link
+from openwisp_notifications.utils import NotificationException, _get_object_link, _get_absolute_url
+from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel, UUIDModel
 
@@ -201,3 +203,45 @@ class AbstractNotificationUser(TimeStampedEditableModel):
         if not self.receive:
             self.email = self.receive
         return super(AbstractNotificationUser, self).save(*args, **kwargs)
+
+
+class AbstractNotificationSetting(UUIDModel):
+    _RECEIVE_HELP = (
+        'Note: Non-superadmin users receive '
+        'notifications only for organizations '
+        'of which they are member of.'
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    type = models.CharField(max_length=30, null=True, choices=NOTIFICATION_CHOICES)
+    organization = models.ForeignKey(
+        get_model_name('openwisp_users', 'Organization'),
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
+    web = models.BooleanField(
+        _('web notifications'), default=True, help_text=_(_RECEIVE_HELP)
+    )
+    email = models.BooleanField(
+        _('email notifications'), default=True, help_text=_(_RECEIVE_HELP)
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.web:
+            self.email = self.web
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        abstract = True
+        constraints = [
+            UniqueConstraint(
+                fields=['organization', 'type', 'user'],
+                name='unique_notification_setting',
+            ),
+        ]
+        verbose_name = _('user notification settings')
+        verbose_name_plural = verbose_name
+        ordering = ['type', 'organization']
+
+    def __str__(self):
+        return f'{self.type} {self.organization}'
