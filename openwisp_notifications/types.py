@@ -1,9 +1,5 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.template.loader import get_template
-from openwisp_notifications.signals import (
-    notification_type_registered,
-    notification_type_unregistered,
-)
 
 NOTIFICATION_TYPES = {
     'default': {
@@ -42,6 +38,11 @@ def _validate_notification_type(type_config):
     if 'message_template' in options:
         get_template(type_config['message_template'])
 
+    if 'email_notification' not in options:
+        type_config['email_notification'] = True
+
+    return type_config
+
 
 def register_notification_type(type_name, type_config):
     """
@@ -59,12 +60,9 @@ def register_notification_type(type_name, type_config):
             f'{type_name} is an already registered Notification Type.'
         )
 
-    _validate_notification_type(type_config)
-    NOTIFICATION_TYPES.update({type_name: type_config})
-    _register_notification_choice(type_name, type_config)
-    notification_type_registered.send(
-        sender=register_notification_type, notification_type=type_name
-    )
+    validated_type_config = _validate_notification_type(type_config)
+    NOTIFICATION_TYPES.update({type_name: validated_type_config})
+    _register_notification_choice(type_name, validated_type_config)
 
 
 def unregister_notification_type(type_name):
@@ -75,9 +73,6 @@ def unregister_notification_type(type_name):
 
     NOTIFICATION_TYPES.pop(type_name)
     _unregister_notification_choice(type_name)
-    notification_type_unregistered.send(
-        sender=unregister_notification_type, notification_type=type_name
-    )
 
 
 def _register_notification_choice(type_name, type_config):

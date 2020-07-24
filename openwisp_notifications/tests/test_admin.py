@@ -185,14 +185,14 @@ class TestAdmin(TestOrganizationMixin, TestCase):
             )
 
     def test_notification_setting_admin_add_permission(self):
-        with self.subTest('Test for superuser user'):
+        with self.subTest('Test for superuser'):
             self.assertTrue(self.ns_admin.has_add_permission(su_request))
 
         with self.subTest('Test for non-superuser'):
             self.assertFalse(self.ns_admin.has_add_permission(op_request),)
 
     def test_notification_setting_admin_delete_permission(self):
-        with self.subTest('Test for superuser user'):
+        with self.subTest('Test for superuser'):
             self.assertTrue(self.ns_admin.has_delete_permission(su_request))
 
         with self.subTest('Test for non-superuser'):
@@ -208,7 +208,7 @@ class TestAdmin(TestOrganizationMixin, TestCase):
     def test_notification_setting_admin_get_queryset(self):
         ns_queryset = NotificationSetting.objects
 
-        with self.subTest('Test for superuser user'):
+        with self.subTest('Test for superuser'):
             qs = self.ns_admin.get_queryset(su_request)
             self.assertEqual(qs.count(), ns_queryset.count())
 

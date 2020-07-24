@@ -1,9 +1,16 @@
+from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
+from openwisp_notifications.handlers import (
+    notification_type_registered_unregistered_handler,
+)
 from openwisp_notifications.swapper import load_model, swapper_load_model
-from openwisp_notifications.types import (
+from openwisp_notifications.tests.test_helpers import (
+    base_register_notification_type,
+    base_unregister_notification_type,
     register_notification_type,
     unregister_notification_type,
 )
+from openwisp_notifications.types import get_notification_configuration
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
@@ -35,41 +42,39 @@ class TestNotificationSetting(TestOrganizationMixin, TestCase):
 
     def test_superuser_created(self):
         admin = self._get_admin()
+        # One global notification setting and one for default notification
         self.assertEqual(ns_queryset.filter(user=admin).count(), 2)
 
     def test_user_created(self):
         user = self._get_user()
 
-        ns = ns_queryset.first()
-        self.assertEqual(ns.user, user)
-        self.assertEqual(ns.type, 'default')
-        self.assertEqual(ns.organization, None)
+        self.assertEqual(ns_queryset.count(), 1)
+        notification_setting = ns_queryset.first()
+        self.assertEqual(notification_setting.user, user)
+        self.assertEqual(notification_setting.type, 'default')
+        self.assertEqual(notification_setting.organization, None)
 
     def test_notification_type_registered_unregistered(self):
         register_notification_type('test', test_notification_type)
-        self._get_user()
+        queryset = NotificationSetting.objects.filter(type='test')
 
-        qs = NotificationSetting.objects.filter(type='test')
-        self.assertEqual(qs.count(), 1)
+        self._get_user()
+        self.assertEqual(queryset.count(), 1)
 
         self._get_admin()
-        self.assertEqual(qs.count(), 2)
-
-        # Test unregistering deletes all notification settings
-        unregister_notification_type('test')
-        self.assertEqual(qs.count(), 0)
+        self.assertEqual(queryset.count(), 3)
 
     def test_organization_created_no_initial_user(self):
         org = self._get_org()
-        qs = ns_queryset.filter(organization=org)
+        queryset = ns_queryset.filter(organization=org)
         self.assertEqual(ns_queryset.count(), 0)
 
         # Notification setting is not created for normal user
         self._get_user()
-        self.assertEqual(qs.count(), 0)
+        self.assertEqual(queryset.count(), 0)
 
         self._get_admin()
-        self.assertEqual(qs.count(), 1)
+        self.assertEqual(queryset.count(), 1)
 
     def test_organization_user(self):
         user = self._get_user()
@@ -78,16 +83,30 @@ class TestNotificationSetting(TestOrganizationMixin, TestCase):
         self.assertEqual(ns_queryset.count(), 2)
 
         org_user.delete()
-        self.assertEqual(ns_queryset.count(), 1)
         # Global notification setting for 'default' type is not deleted.
+        self.assertEqual(ns_queryset.count(), 1)
 
     def test_register_notification_org_user(self):
         self._get_org_user()
-        qs = NotificationSetting.objects.filter(type='test')
-        self.assertEqual(qs.count(), 0)
 
+        queryset = NotificationSetting.objects.filter(type='test')
+        self.assertEqual(queryset.count(), 0)
         register_notification_type('test', test_notification_type)
-        self.assertEqual(qs.count(), 2)
+        self.assertEqual(queryset.count(), 2)
+
+    def test_post_migration_handler(self):
+        # Simulates loading of app when Django server starts
+        admin = self._get_admin()
+        org_user = self._get_org_user()
+        self.assertEqual(ns_queryset.count(), 5)
+
+        default_type_config = get_notification_configuration('default')
+        base_unregister_notification_type('default')
+        base_register_notification_type('test', test_notification_type)
+        notification_type_registered_unregistered_handler(sender=self)
+
+        # Notification Setting for "default" type are deleted
+        self.assertEqual(ns_queryset.count(), 0)
 
         # Notification Settings for "test" type are created
         queryset = NotificationSetting.objects

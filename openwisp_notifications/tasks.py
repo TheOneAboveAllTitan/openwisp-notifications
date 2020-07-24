@@ -71,8 +71,8 @@ def ns_user_created(instance_id, is_superuser, is_created):
                     )
                 )
 
-        notification_settings.append(
-            NotificationSetting(user_id=instance_id, type=type, organization=None,)
+        NotificationSetting.objects.get_or_create(
+            user_id=instance_id, type=type, organization=None,
         )
 
     NotificationSetting.objects.bulk_create(
@@ -81,19 +81,26 @@ def ns_user_created(instance_id, is_superuser, is_created):
 
 
 @shared_task
-def ns_register_notification_type(notification_type):
+def ns_register_unregister_notification_type(
+    notification_type=None, delete_unregistered=True
+):
     """
-    Adds notification setting for all users
-    when a new notification type is registered.
+    Creates notification setting for registeterd notification types.
+    Deletes notification for unregistered notification types.
     """
-    org_iter = Organization.objects.iterator()
+
+    notification_types = (
+        [notification_type] if notification_type else NOTIFICATION_TYPES.keys()
+    )
     notification_settings = []
+    organizations = Organization.objects.all()
+    organization_users = OrganizationUser.objects.all()
 
     for type in notification_types:
         for user in User.objects.filter(is_superuser=True):
             # Superusers receives notifications for all organizations
             # irrespective of their membership.
-            for org in Organization.objects.iterator():
+            for org in organizations:
                 notification_settings.append(
                     NotificationSetting(user=user, type=type, organization=org)
                 )
@@ -105,43 +112,28 @@ def ns_register_notification_type(notification_type):
 
         # OrganizationUsers receives notifications for organization they
         # are member of.
-        for org_user in OrganizationUser.objects.iterator():
+        for org_user in organization_users:
             notification_settings.append(
-                NotificationSetting(user=user, type=notification_type, organization=org)
+                NotificationSetting(
+                    user_id=org_user.user_id,
+                    organization_id=org_user.organization_id,
+                    type=type,
+                )
             )
 
-        NotificationSetting.objects.get_or_create(
-            user_id=user.id, type=notification_type, organization=None,
-        )
-
-    org_users_iter = OrganizationUser.objects.iterator()
-    for org_user in org_users_iter:
-        notification_settings.append(
-            NotificationSetting(
-                user_id=org_user.user_id,
-                organization_id=org_user.organization_id,
-                type=notification_type,
+        # Add a global notificattion setting for non-superuser
+        for user in User.objects.filter(is_superuser=False):
+            NotificationSetting.objects.get_or_create(
+                user_id=user.id, type=type, organization=None,
             )
-        )
-
-    # Add a global notificattion setting for non-superuser
-    for user in User.objects.filter(is_superuser=False):
-        NotificationSetting.objects.get_or_create(
-            user_id=user.id, type=notification_type, organization=None,
-        )
 
     NotificationSetting.objects.bulk_create(
         notification_settings, ignore_conflicts=True
     )
 
-
-@shared_task
-def ns_unregister_notification_type(notification_type):
-    """
-    Deletes all notification settings related to a unregistered
-    notification type.
-    """
-    NotificationSetting.objects.filter(type=notification_type).delete()
+    if delete_unregistered:
+        # Delete all notification settings for unregistered notification types
+        NotificationSetting.objects.exclude(type__in=notification_types).delete()
 
 
 @shared_task

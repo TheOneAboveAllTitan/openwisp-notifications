@@ -5,14 +5,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.db.models.query import QuerySet
-from django.db.models.signals import post_delete, post_save, pre_delete, post_migrate
+from django.db.models.signals import post_delete, post_migrate, post_save, pre_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 from openwisp_notifications import settings as app_settings
-from openwisp_notifications.exceptions import NotificationRenderException
 from openwisp_notifications import tasks
+from openwisp_notifications.exceptions import NotificationRenderException
 from openwisp_notifications.swapper import load_model, swapper_load_model
 from openwisp_notifications.types import get_notification_configuration
 from openwisp_notifications.websockets import handlers as ws_handlers
@@ -22,7 +22,6 @@ EXTRA_DATA = app_settings.get_config()['USE_JSONFIELD']
 User = get_user_model()
 
 Notification = load_model('Notification')
-NotificationUser = load_model('NotificationUser')
 NotificationSetting = load_model('NotificationSetting')
 NotificationsAppConfig = apps.get_app_config(NotificationSetting._meta.app_label)
 
@@ -127,9 +126,13 @@ def send_email_notification(sender, instance, created, **kwargs):
         email_preference = instance.recipient.notificationsetting_set.get(
             organization=target_org, type=instance.type
         ).email
+        if email_preference is None:
+            email_preference = get_notification_configuration(instance.type).get(
+                'email_notification'
+            )
     else:
-        # We can not check email preferences if notification type is absent,
-        # therefor send email anyway.
+        # We can not check email preference if notification type is absent,
+        # therefore send email anyway.
         email_preference = True
 
     if not (email_preference and instance.recipient.email):

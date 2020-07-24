@@ -19,10 +19,10 @@ from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
     get_notification_configuration,
 )
-from openwisp_notifications.utils import NotificationException, _get_object_link, _get_absolute_url
+from openwisp_notifications.utils import _get_absolute_url, _get_object_link
 from swapper import get_model_name
 
-from openwisp_utils.base import TimeStampedEditableModel, UUIDModel
+from openwisp_utils.base import UUIDModel
 
 logger = logging.getLogger(__name__)
 
@@ -180,31 +180,6 @@ class AbstractNotification(UUIDModel, BaseNotifcation):
         )
 
 
-class AbstractNotificationUser(TimeStampedEditableModel):
-    _RECEIVE_HELP = (
-        'note: non-superadmin users receive '
-        'notifications only for organizations '
-        'of which they are member of.'
-    )
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    receive = models.BooleanField(
-        _('receive notifications'), default=True, help_text=_(_RECEIVE_HELP)
-    )
-    email = models.BooleanField(
-        _('email notifications'), default=True, help_text=_(_RECEIVE_HELP)
-    )
-
-    class Meta:
-        abstract = True
-        verbose_name = _('user notification settings')
-        verbose_name_plural = verbose_name
-
-    def save(self, *args, **kwargs):
-        if not self.receive:
-            self.email = self.receive
-        return super(AbstractNotificationUser, self).save(*args, **kwargs)
-
-
 class AbstractNotificationSetting(UUIDModel):
     _RECEIVE_HELP = (
         'Note: Non-superadmin users receive '
@@ -228,7 +203,7 @@ class AbstractNotificationSetting(UUIDModel):
         _('web notifications'), default=True, help_text=_(_RECEIVE_HELP)
     )
     email = models.BooleanField(
-        _('email notifications'), default=True, help_text=_(_RECEIVE_HELP)
+        _('email notifications'), null=True, help_text=_(_RECEIVE_HELP)
     )
 
     def save(self, *args, **kwargs):
