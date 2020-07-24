@@ -1,7 +1,6 @@
 from openwisp_notifications.base.models import (
     AbstractNotification,
     AbstractNotificationSetting,
-    AbstractNotificationUser,
 )
 from swapper import swappable_setting
 
@@ -11,12 +10,6 @@ class Notification(AbstractNotification):
         abstract = False
         app_label = 'openwisp_notifications'
         swappable = swappable_setting('openwisp_notifications', 'Notification')
-
-
-class NotificationUser(AbstractNotificationUser):
-    class Meta(AbstractNotificationUser.Meta):
-        abstract = False
-        swappable = swappable_setting('openwisp_notifications', 'NotificationUser')
 
 
 class NotificationSetting(AbstractNotificationSetting):

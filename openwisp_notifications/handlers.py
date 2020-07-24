@@ -21,7 +21,6 @@ User = get_user_model()
 EXTRA_DATA = app_settings.get_config()['USE_JSONFIELD']
 
 Notification = load_model('Notification')
-NotificationUser = load_model('NotificationUser')
 NotificationSetting = load_model('NotificationSetting')
 
 OrganizationUser = swapper_load_model('openwisp_users', 'OrganizationUser')
