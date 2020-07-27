@@ -66,20 +66,23 @@ class AbstractNotification(UUIDModel, BaseNotifcation):
         """
         cache.delete(cls.count_cache_key(user.pk))
 
+    @property
+    def actor_link(self):
+        return _get_object_link(self, field='actor', url_only=True, absolute_url=True)
+
+    @property
+    def action_link(self):
+        return _get_object_link(
+            self, field='action_object', url_only=True, absolute_url=True,
+        )
+
+    @property
+    def target_link(self):
+        return _get_object_link(self, field='target', url_only=True, absolute_url=True)
+
     @cached_property
     def message(self):
         if self.type:
-            # setting links in notification object for message rendering
-            self.actor_link = _get_object_link(
-                self, field='actor', url_only=True, absolute_url=True
-            )
-            self.action_link = _get_object_link(
-                self, field='action_object', url_only=True, absolute_url=True,
-            )
-            self.target_link = _get_object_link(
-                self, field='target', url_only=True, absolute_url=True
-            )
-
             config = get_notification_configuration(self.type)
             try:
                 if 'message' in config:
@@ -96,8 +99,6 @@ class AbstractNotification(UUIDModel, BaseNotifcation):
                 raise NotificationRenderException(
                     'Error in rendering notification message.'
                 )
-            # clean up
-            self.actor_link = self.action_link = self.target_link = None
             return mark_safe(markdown(md_text))
         else:
             return self.description
