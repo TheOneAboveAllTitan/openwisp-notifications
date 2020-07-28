@@ -6,6 +6,7 @@ from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.db import models
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.html import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -17,7 +18,7 @@ from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
     get_notification_configuration,
 )
-from openwisp_notifications.utils import _get_object_link
+from openwisp_notifications.utils import _get_absolute_url, _get_object_link
 
 from openwisp_utils.base import TimeStampedEditableModel, UUIDModel
 
@@ -151,6 +152,18 @@ class AbstractNotification(UUIDModel, BaseNotifcation):
     @cached_property
     def target(self):
         return self._related_object('target')
+
+    @property
+    def redirect_view_link(self):
+        return _get_absolute_url(
+            '{redirect_view}?target_url={target}'.format(
+                redirect_view=reverse(
+                    f'{self._meta.app_label}:notification_read_redirect',
+                    args=(self.pk,),
+                ),
+                target=self.target_link,
+            )
+        )
 
 
 class AbstractNotificationUser(TimeStampedEditableModel):

@@ -355,7 +355,8 @@ class TestNotifications(TestOrganizationMixin, TestCase):
     def test_notification_type_email(self):
         operator = self._create_operator()
         exp_target_url = (
-            f'http://example.com/admin/openwisp_users/user/{operator.id}/change/'
+            'http://example.com/api/v1/notifications/read-redirect/{n.id}/'
+            f'?target_url=http://example.com/admin/openwisp_users/user/{operator.id}/change/'
         )
         exp_email_body = '{message}\n\nFor more information see {target_url}.'
         self.notification_options.update({'type': 'default'})
@@ -384,12 +385,13 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             self._create_notification()
             email = mail.outbox.pop()
             n = notification_queryset.first()
+            target_url = exp_target_url.format(n=n)
             self.assertEqual(email.body, strip_tags(n.message))
             html_message, content_type = email.alternatives.pop()
             self.assertEqual(content_type, 'text/html')
             self.assertIn(n.message, html_message)
             self.assertNotIn(
-                f'<a href="{exp_target_url}">', html_message,
+                f'<a href="{target_url}">', html_message,
             )
 
         with self.subTest('Test email with target object'):
@@ -397,11 +399,12 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             self._create_notification()
             email = mail.outbox.pop()
             n = notification_queryset.first()
+            target_url = exp_target_url.format(n=n)
             html_message, content_type = email.alternatives.pop()
             self.assertEqual(
                 email.body,
                 exp_email_body.format(
-                    message=strip_tags(n.message), target_url=exp_target_url
+                    message=strip_tags(n.message), target_url=target_url
                 ),
             )
             self.assertEqual(
@@ -415,7 +418,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
             )
             self.assertIn(n.message, html_message)
             self.assertIn(
-                f'<a href="{exp_target_url}">For further information see'
+                f'<a href="{target_url}">For further information see'
                 f' "{n.target_content_type.model}: {n.target}".</a>',
                 html_message,
             )
@@ -505,8 +508,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         n = notification_queryset.first()
         self.assertEqual(
             email.body,
-            f'{strip_tags(n.message)}\n\nFor more information see'
-            f' http://example.com/admin/openwisp_users/user/{operator.id}/change/.',
+            f'{strip_tags(n.message)}\n\nFor more information see {n.redirect_view_link}.',
         )
         self.assertEqual(email.subject, '[example.com] Default Notification Subject')
         self.assertFalse(email.alternatives)

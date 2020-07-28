@@ -11,4 +11,9 @@ def get_api_urls(api_views=None):
         path('', views.notifications_list, name='notifications_list'),
         path('read/', views.notifications_read_all, name='notifications_read_all'),
         path('<uuid:pk>/', views.notification_detail, name='notification_detail'),
+        path(
+            'read-redirect/<uuid:pk>/',
+            views.notification_read_redirect,
+            name='notification_read_redirect',
+        ),
     ]
