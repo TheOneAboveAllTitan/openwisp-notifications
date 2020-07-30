@@ -24,6 +24,7 @@ branches:
   only:
     - master
     - dev
+    - issues/65-test-runner
 
 before_install:
   - pip install -U pip wheel
