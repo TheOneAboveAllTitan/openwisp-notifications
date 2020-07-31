@@ -70,10 +70,7 @@ class NotificationReadRedirect(BaseNotificationView):
     def get(self, request, *args, **kwargs):
         notification = self.get_object()
         notification.mark_as_read()
-        target_url = self.request.query_params.get('target_url', None)
-        if not target_url:
-            target_url = notification.target_link
-        return HttpResponseRedirect(target_url)
+        return HttpResponseRedirect(notification.target_link)
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)

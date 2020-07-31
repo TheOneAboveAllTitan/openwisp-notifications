@@ -355,8 +355,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
     def test_notification_type_email(self):
         operator = self._create_operator()
         exp_target_url = (
-            'http://example.com/api/v1/notifications/read-redirect/{n.id}/'
-            f'?target_url=http://example.com/admin/openwisp_users/user/{operator.id}/change/'
+            'http://example.com/api/v1/notifications/{n.id}/redirect/'
         )
         exp_email_body = '{message}\n\nFor more information see {target_url}.'
         self.notification_options.update({'type': 'default'})

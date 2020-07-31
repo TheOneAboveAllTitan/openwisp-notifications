@@ -156,13 +156,7 @@ class AbstractNotification(UUIDModel, BaseNotifcation):
     @property
     def redirect_view_link(self):
         return _get_absolute_url(
-            '{redirect_view}?target_url={target}'.format(
-                redirect_view=reverse(
-                    f'{self._meta.app_label}:notification_read_redirect',
-                    args=(self.pk,),
-                ),
-                target=self.target_link,
-            )
+            reverse(f'notifications:notification_read_redirect', args=(self.pk,))
         )
 
 

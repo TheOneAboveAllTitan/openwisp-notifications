@@ -270,7 +270,7 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
 
         with self.subTest('Test redirect read view'):
             url = reverse(
-                f'{self.app_label}:notification_read_redirect', kwargs={'pk': n.id}
+                f'{self.url_namespace}:notification_read_redirect', kwargs={'pk': n.id}
             )
             response = self.client.get(url, HTTP_AUTHORIZATION=f'Bearer {token}')
             self.assertEqual(response.status_code, 302)
@@ -443,19 +443,16 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
 
         with self.subTest('Test non-existent notification'):
             url = reverse(
-                f'{self.app_label}:notification_read_redirect', args=(uuid.uuid4(),)
+                f'{self.url_namespace}:notification_read_redirect', args=(uuid.uuid4(),)
             )
             response = self.client.get(url)
             self.assertEqual(response.status_code, 404)
             self.assertDictEqual(response.data, {'detail': NOT_FOUND_ERROR})
 
         with self.subTest('Test existent notification'):
-            url = '{0}?target_url={1}'.format(
-                reverse(
-                    f'{self.app_label}:notification_read_redirect',
-                    args=(notification.pk,),
-                ),
-                notification.target_link,
+            url = reverse(
+                f'{self.url_namespace}:notification_read_redirect',
+                args=(notification.pk,),
             )
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302)
@@ -465,24 +462,14 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
 
         _unread_notification(notification)
 
-        with self.subTest('Test target_link not present in url'):
-            url = reverse(
-                f'{self.app_label}:notification_read_redirect', args=(notification.pk,)
-            )
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 302)
-            self.assertEqual(response.url, notification.target_link)
-            notification.refresh_from_db()
-            self.assertEqual(notification.unread, False)
-
         with self.subTest('Test user not logged in'):
             self.client.logout()
             url = reverse(
-                f'{self.app_label}:notification_read_redirect', args=(notification.pk,)
+                f'{self.url_namespace}:notification_read_redirect', args=(notification.pk,)
             )
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302)
             self.assertEqual(
                 response.url,
-                f'/admin/login/?next=/api/v1/notifications/read-redirect/{notification.pk}/',
+                f'/admin/login/?next=/api/v1/notifications/{notification.pk}/redirect/',
             )
