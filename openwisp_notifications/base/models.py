@@ -19,7 +19,7 @@ from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
     get_notification_configuration,
 )
-from openwisp_notifications.utils import NotificationException, _get_object_link, _get_absolute_url
+from openwisp_notifications.utils import _get_absolute_url, _get_object_link
 from swapper import get_model_name
 
 from openwisp_utils.base import UUIDModel

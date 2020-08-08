@@ -17,12 +17,14 @@ from openwisp_notifications import settings as app_settings
 from openwisp_notifications.handlers import notify_handler
 from openwisp_notifications.signals import notify
 from openwisp_notifications.swapper import load_model, swapper_load_model
+from openwisp_notifications.tests.test_helpers import (
+    register_notification_type,
+    unregister_notification_type,
+)
 from openwisp_notifications.types import (
     NOTIFICATION_CHOICES,
     _unregister_notification_choice,
     get_notification_configuration,
-    register_notification_type,
-    unregister_notification_type,
 )
 from openwisp_notifications.utils import _get_absolute_url
 

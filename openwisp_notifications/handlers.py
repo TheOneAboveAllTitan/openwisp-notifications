@@ -4,14 +4,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.db.models.query import QuerySet
-from django.db.models.signals import post_delete, post_save, pre_delete
+from django.db.models.signals import post_delete, post_migrate, post_save, pre_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 from openwisp_notifications import settings as app_settings
-from openwisp_notifications.exceptions import NotificationRenderException
 from openwisp_notifications import tasks
+from openwisp_notifications.exceptions import NotificationRenderException
 from openwisp_notifications.swapper import load_model, swapper_load_model
 from openwisp_notifications.types import get_notification_configuration
 from openwisp_notifications.websockets import handlers as ws_handlers
@@ -124,8 +124,8 @@ def send_email_notification(sender, instance, created, **kwargs):
             organization=target_org, type=instance.type
         ).email
     else:
-        # We can not check email preferences if notification type is absent,
-        # therefor send email anyway.
+        # We can not check email preference if notification type is absent,
+        # therefore send email anyway.
         email_preference = True
 
     if not (email_preference and instance.recipient.email):
@@ -200,12 +200,13 @@ def notification_related_object_deleted(sender, instance, **kwargs):
         )
 
 
-def notification_type_registered_handler(sender, notification_type, **kwargs):
-    tasks.ns_register_notification_type.delay(notification_type)
-
-
-def notification_type_unregistered_handler(sender, notification_type, **kwargs):
-    tasks.ns_unregister_notification_type.delay(notification_type)
+@receiver(
+    post_migrate,
+    sender=Notification,
+    dispatch_uid='register_unregister_notification_types',
+)
+def notification_type_registered_unregistered_handler(sender, **kwargs):
+    tasks.ns_register_unregister_notification_type.delay()
 
 
 @receiver(
