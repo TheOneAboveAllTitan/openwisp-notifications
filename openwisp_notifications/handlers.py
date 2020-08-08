@@ -56,10 +56,16 @@ def notify_handler(**kwargs):
         where = where | (Q(is_staff=True) & Q(openwisp_users_organization=target_org))
         where_group = Q(openwisp_users_organization=target_org)
 
+    # We can only find notification setting if notification type is present.
     if notification_type:
-        # We can only find notification setting if notification type is present.
-        notification_setting = Q(
-            notificationsetting__web=True,
+        # Create notification for users who have opted for receiving notifications.
+        # For users who have not configured web_notifications,
+        # use default from notification type
+        web_notification = Q(notificationsetting__web=True)
+        if notification_template['web_notification']:
+            web_notification |= Q(notificationsetting__web=None)
+
+        notification_setting = web_notification & Q(
             notificationsetting__type=notification_type,
             notificationsetting__organization_id=target_org,
         )
@@ -124,9 +130,10 @@ def send_email_notification(sender, instance, created, **kwargs):
     # If user has not defined preference, use "email_notification" setting of notification type.
     if instance.type:
         target_org = getattr(getattr(instance, 'target', None), 'organization_id', None)
-        email_preference = instance.recipient.notificationsetting_set.get(
+        notification_setting = instance.recipient.notificationsetting_set.get(
             organization=target_org, type=instance.type
-        ).email
+        )
+        email_preference = notification_setting.email_notification
     else:
         # We can not check email preference if notification type is absent,
         # therefore send email anyway.
