@@ -49,3 +49,4 @@ class TestNotificationSetting(BaseTestNotificationSetting):
 del BaseTestAdmin
 del BaseTestNotifications
 del BaseTestNotificationApi
+del BaseTestNotificationSetting
