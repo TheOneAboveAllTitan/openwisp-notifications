@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                 (
                     'email',
                     models.BooleanField(
-                        default=True,
+                        null=True,
                         help_text='Note: Non-superadmin users receive notifications only for organizations of which they are member of.',
                         verbose_name='email notifications',
                     ),

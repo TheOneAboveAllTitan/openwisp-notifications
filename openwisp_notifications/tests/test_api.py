@@ -487,11 +487,11 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
         with self.subTest('Test individual result object'):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
-            ns = response.data['results'][0]
-            self.assertIn('id', ns)
-            self.assertTrue(ns['web'])
-            self.assertTrue(ns['email'])
-            self.assertIn('organization', ns)
+            notification_setting = response.data['results'][0]
+            self.assertIn('id', notification_setting)
+            self.assertTrue(notification_setting['web'])
+            self.assertIsNone(notification_setting['email'])
+            self.assertIn('organization', notification_setting)
 
     def test_list_notification_setting_filtering(self):
         url = self._get_path('notification_setting_list')

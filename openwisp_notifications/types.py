@@ -37,6 +37,11 @@ def _validate_notification_type(type_config):
     if 'message_template' in options:
         get_template(type_config['message_template'])
 
+    if 'email_notification' not in options:
+        type_config['email_notification'] = True
+
+    return type_config
+
 
 def register_notification_type(type_name, type_config):
     """
@@ -54,9 +59,9 @@ def register_notification_type(type_name, type_config):
             f'{type_name} is an already registered Notification Type.'
         )
 
-    _validate_notification_type(type_config)
-    NOTIFICATION_TYPES.update({type_name: type_config})
-    _register_notification_choice(type_name, type_config)
+    validated_type_config = _validate_notification_type(type_config)
+    NOTIFICATION_TYPES.update({type_name: validated_type_config})
+    _register_notification_choice(type_name, validated_type_config)
 
 
 def unregister_notification_type(type_name):
