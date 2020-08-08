@@ -228,6 +228,29 @@ class AbstractNotificationSetting(UUIDModel):
         )
 
     def save(self, *args, **kwargs):
-        if not self.web:
-            self.email = self.web
+        if not self.web_notification:
+            self.email = self.web_notification
         return super().save(*args, **kwargs)
+
+    def full_clean(self, *args, **kwargs):
+        if self.email == self.type_config['email_notification']:
+            self.email = None
+        if self.web == self.type_config['web_notification']:
+            self.web = None
+        return super().full_clean(*args, **kwargs)
+
+    @cached_property
+    def type_config(self):
+        return get_notification_configuration(self.type)
+
+    @cached_property
+    def email_notification(self):
+        if self.email is not None:
+            return self.email
+        return self.type_config.get('email_notification')
+
+    @cached_property
+    def web_notification(self):
+        if self.web is not None:
+            return self.web
+        return self.type_config.get('web_notification')

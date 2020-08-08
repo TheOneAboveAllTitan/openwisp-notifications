@@ -143,3 +143,25 @@ class TestNotificationSetting(TestOrganizationMixin, TestCase):
 
         OrganizationUser.objects.create(user=user, organization=test_org)
         self.assertEqual(ns_queryset.count(), 2)
+
+    def test_notification_setting_full_clean(self):
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'info',
+            'verb': 'testing',
+            'message': 'Test message',
+            'email_subject': 'Test Email Subject',
+            'web_notification': False,
+            'email_notification': False,
+        }
+        register_notification_type('test_type', test_type)
+        self._get_admin()
+        queryset = NotificationSetting.objects.filter(type='test_type')
+        queryset.update(email=False, web=False)
+        notification_setting = queryset.first()
+
+        notification_setting.full_clean()
+        self.assertIsNone(notification_setting.email)
+        self.assertIsNone(notification_setting.web)
+
+        unregister_notification_type('test_type')
