@@ -119,7 +119,7 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         notification_preference = NotificationSetting.objects.get(
             user_id=self.admin.pk, organization_id=None, type='default'
         )
-        self.assertEqual(notification_preference.email, True)
+        self.assertEqual(notification_preference.email, None)
         notification_preference.web = False
         notification_preference.save()
         notification_preference.refresh_from_db()
@@ -139,13 +139,10 @@ class TestNotifications(TestOrganizationMixin, TestCase):
 
     def test_email_disabled(self):
         self.notification_options.update({'type': 'default'})
-        notification_preference = NotificationSetting.objects.get(
+        NotificationSetting.objects.filter(
             user_id=self.admin.pk, organization_id=None, type='default'
-        )
-        notification_preference.email = False
-        notification_preference.save()
+        ).update(email=False)
         self._create_notification()
-        self.admin.email = ''
         self.assertEqual(Notification.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 0)
 
@@ -618,3 +615,133 @@ class TestNotifications(TestOrganizationMixin, TestCase):
         self.assertEqual(notification_queryset.count(), 0)
 
         register_notification_type('default', default_type_config)
+
+    def test_notification_type_email_notification_setting_true(self):
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'info',
+            'verb': 'testing',
+            'message': 'Test message',
+            'email_subject': 'Test Email Subject',
+            'email_notification': True,
+        }
+
+        register_notification_type('test_type', test_type)
+        self.notification_options.update({'type': 'test_type'})
+
+        with self.subTest('Test user email preference not defined'):
+            self._create_notification()
+            self.assertEqual(len(mail.outbox), 1)
+            self.assertIsNotNone(mail.outbox.pop())
+
+        with self.subTest('Test user email preference is "False"'):
+            NotificationSetting.objects.filter(
+                user=self.admin, type='test_type', organization=None
+            ).update(email=False)
+            self._create_notification()
+            self.assertEqual(len(mail.outbox), 0)
+
+        unregister_notification_type('test_type')
+
+    def test_notification_type_email_notification_setting_false(self):
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'info',
+            'verb': 'testing',
+            'message': 'Test message',
+            'email_subject': 'Test Email Subject',
+            'email_notification': False,
+        }
+
+        register_notification_type('test_type', test_type)
+        self.notification_options.update({'type': 'test_type'})
+
+        with self.subTest('Test user email preference not defined'):
+            self._create_notification()
+            self.assertEqual(len(mail.outbox), 0)
+
+        with self.subTest('Test user email preference is "True"'):
+            NotificationSetting.objects.filter(
+                user=self.admin, type='test_type', organization=None
+            ).update(email=True)
+            self._create_notification()
+            self.assertEqual(len(mail.outbox), 1)
+
+        unregister_notification_type('test_type')
+
+    def test_notification_type_web_notification_setting_true(self):
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'info',
+            'verb': 'testing',
+            'message': 'Test message',
+            'email_subject': 'Test Email Subject',
+            'web_notification': True,
+        }
+
+        register_notification_type('test_type', test_type)
+        self.notification_options.update({'type': 'test_type'})
+
+        with self.subTest('Test user web preference not defined'):
+            self._create_notification()
+            self.assertEqual(notification_queryset.delete()[0], 1)
+
+        with self.subTest('Test user web preference is "False"'):
+            NotificationSetting.objects.filter(
+                user=self.admin, type='test_type', organization=None
+            ).update(web=False)
+            self._create_notification()
+            self.assertEqual(notification_queryset.count(), 0)
+
+        unregister_notification_type('test_type')
+
+    def test_notification_type_web_notification_setting_false(self):
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'info',
+            'verb': 'testing',
+            'message': 'Test message',
+            'email_subject': 'Test Email Subject',
+            'web_notification': False,
+        }
+
+        register_notification_type('test_type', test_type)
+        self.notification_options.update({'type': 'test_type'})
+
+        with self.subTest('Test user web preference not defined'):
+            self._create_notification()
+            self.assertEqual(notification_queryset.count(), 0)
+
+        with self.subTest('Test user email preference is "True"'):
+            notification_setting = NotificationSetting.objects.get(
+                user=self.admin, type='test_type', organization=None
+            )
+            notification_setting.email = True
+            notification_setting.save()
+            notification_setting.refresh_from_db()
+            self.assertFalse(notification_setting.email)
+
+        with self.subTest('Test user web preference is "True"'):
+            NotificationSetting.objects.filter(
+                user=self.admin, type='test_type', organization=None
+            ).update(web=True)
+            self._create_notification()
+            self.assertEqual(notification_queryset.count(), 1)
+
+        unregister_notification_type('test_type')
+
+    def test_notification_type_email_web_notification_defaults(self):
+        test_type = {
+            'verbose_name': 'Test Notification Type',
+            'level': 'info',
+            'verb': 'testing',
+            'message': 'Test message',
+            'email_subject': 'Test Email Subject',
+        }
+        register_notification_type('test_type', test_type)
+
+        notification_type_config = get_notification_configuration('test_type')
+        self.assertTrue(notification_type_config['web_notification'])
+        self.assertTrue(notification_type_config['email_notification'])
+
+        unregister_notification_type('test_type')
