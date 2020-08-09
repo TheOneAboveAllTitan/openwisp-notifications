@@ -680,6 +680,27 @@ Delete a notification
 
     DELETE /api/v1/notifications/{pk}/
 
+List user's notification setting
+################################
+
+.. code-block:: text
+
+    GET /api/v1/notifications/settings/
+
+Get notification setting details
+################################
+
+.. code-block:: text
+
+    GET /api/v1/notifications/settings/{pk}/
+
+Update notification setting details
+###################################
+
+.. code-block:: text
+
+    PATCH /api/v1/notifications/setting/{pk}/
+
 Installing for development
 --------------------------
 

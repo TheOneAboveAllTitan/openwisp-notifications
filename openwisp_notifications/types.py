@@ -1,17 +1,22 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.template.loader import get_template
+from openwisp_notifications.signals import (
+    notification_type_registered,
+    notification_type_unregistered,
+)
 
 NOTIFICATION_TYPES = {
     'default': {
         'level': 'info',
         'verb': 'default verb',
-        'name': 'Default Type',
+        'verbose_name': 'Default Type',
         'email_subject': '[{site.name}] Default Notification Subject',
         'message': (
             'Default notification with {notification.verb} and level {notification.level}'
             ' by [{notification.actor}]({notification.actor_link})'
         ),
         'message_template': 'openwisp_notifications/default_message.md',
+        'email_notification': True,
     },
 }
 
@@ -57,6 +62,9 @@ def register_notification_type(type_name, type_config):
     _validate_notification_type(type_config)
     NOTIFICATION_TYPES.update({type_name: type_config})
     _register_notification_choice(type_name, type_config)
+    notification_type_registered.send(
+        sender=register_notification_type, notification_type=type_name
+    )
 
 
 def unregister_notification_type(type_name):
@@ -67,6 +75,9 @@ def unregister_notification_type(type_name):
 
     NOTIFICATION_TYPES.pop(type_name)
     _unregister_notification_choice(type_name)
+    notification_type_unregistered.send(
+        sender=unregister_notification_type, notification_type=type_name
+    )
 
 
 def _register_notification_choice(type_name, type_config):
