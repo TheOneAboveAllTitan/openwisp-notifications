@@ -32,6 +32,7 @@ Available features
 - Configurable email theme
 - `Definition of notification types <#notification-types>`_
 - `Possibility to register new notification types <#registering--unregistering-notification-types>`_
+- `Preference for receiving notifications <#notification-preference>`_
 - TODO: add more
 
 Install development version
@@ -183,6 +184,14 @@ Configure channel layers (you may user a `different channel layer <https://chann
         },
     }
 
+Run migrations
+
+.. code-block:: shell
+
+    ./manage.py migrate
+
+**Note**: Running migrations is also required for creating `notification settings <#notification-preference>`_ apart from creating database schema.
+
 Sending notifications
 ---------------------
 
@@ -316,6 +325,7 @@ from scratch. An example to extend default message template is shown below.
 template as shown above. Additionally attributes ``actor_link``, ``action_link`` and ``target_link`` are
 also available for providing hyperlinks to respective object.
 
+
 Registering / Unregistering Notification Types
 ----------------------------------------------
 
@@ -398,6 +408,9 @@ An example usage is shown below.
 **Note**: It will raise ``ImproperlyConfigured`` exception if the concerned notification type is not
 registered.
 
+**Note**: After writing code for registering or unregistering notification types, it is recommended to run
+database migrations to create notification setttings for these notification types.
+
 Passing extra data to notifications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -434,6 +447,25 @@ Then in the application code:
             sender=sender,
             error=str(error)
         )
+
+Notification Preference
+-----------------------
+
+*OpenWISP Notifications* allows users to select their preferred way of receiving notifications.
+Users can choose from web or email notifications. These settings have been categorised
+over notification type and organization, therefore allowing users to only receive notifications
+from selected organization or notification type.
+
+.. image:: https://github.com/openwisp/openwisp-notifications/blob/master/docs/images/notification_settings.png
+
+Notification settings are automatically created for all notification types and organizations for all users.
+While superusers can add or delete notification settings for everyone, staff users can only modify their
+preferred ways for receiving notifications. With provided functionality, users can choose to receive both
+web and email notifications or only web notifications. Users can also stop receiving notifications
+by disabling both ``web`` and ``email`` option for a notification setting.
+
+**Note**: If a user has not configured their email preference for a particular notification setting,
+then ``email_notification`` option of concerned notification type will be used.
 
 Settings
 --------
@@ -515,7 +547,7 @@ publicly accessible from the internet. Otherwise, the logo may not be displayed 
 |  default  |  Any domain defined in ``ALLOWED_HOST`` |
 +-----------+-----------------------------------------+
 
-This setting defines the domain at which API and Web Socket communitcate for
+This setting defines the domain at which API and Web Socket communicate for
 working of notification widget.
 
 **Note**: You don't need to configure this setting if you
@@ -701,7 +733,7 @@ Update notification setting details
 
 .. code-block:: text
 
-    PATCH /api/v1/notifications/setting/{pk}/
+    PATCH /api/v1/notifications/settings/{pk}/
 
 Installing for development
 --------------------------
@@ -930,7 +962,7 @@ Add the following to your ``settings.py``:
 
     # Setting models for swapper module
     OPENWISP_NOTIFICATIONS_NOTIFICATION_MODEL = 'mynotifications.Notification'
-    OPENWISP_NOTIFICATIONS_NOTIFICATIONUSER_MODEL = 'mynotifications.NotificationUser'
+    OPENWISP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = 'mynotifications.NotificationSetting'
 
 9. Create database migrations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -962,7 +994,7 @@ For example:
 
 .. code-block:: python
 
-    from openwisp_notifications.admin import NotificationAdmin, NotificationUserInline
+    from openwisp_notifications.admin import NotificationAdmin, NotificationSettingInline
 
     NotificationAdmin.list_display.insert(1, 'my_custom_field')
     NotificationAdmin.ordering = ['-my_custom_field']
@@ -976,27 +1008,28 @@ monkey patching, you can proceed as follows:
 .. code-block:: python
 
     from django.contrib import admin
-    from openwisp_notifications.admin import NotificationAdmin as BaseNotificationAdmin
     from openwisp_notifications.admin import (
-        NotificationUserInline as BaseNotificationUserInline,
+        NotificationSettingAdmin as BaseNotificationSettingAdmin,
+    )
+    from openwisp_notifications.admin import (
+        NotificationSettingInline as BaseNotificationSettingInline,
     )
     from openwisp_notifications.swapper import load_model
 
-    Notification = load_model('Notification')
-    NotificationUser = load_model('NotificationUser')
+    NotificationSetting = load_model('NotificationSetting')
 
-    admin.site.unregister(Notification)
-    admin.site.unregister(NotificationUser)
+    admin.site.unregister(NotificationSettingAdmin)
+    admin.site.unregister(NotificationSettingInline)
 
 
-    @admin.register(Notification)
-    class NotificationAdmin(BaseNotificationAdmin):
+    @admin.register(NotificationSetting)
+    class NotificationSettingAdmin(BaseNotificationSettingAdmin):
         # add your changes here
         pass
 
 
-    @admin.register(NotificationUser)
-    class NotificationUserInline(BaseNotificationUserInline):
+    @admin.register(NotificationSetting)
+    class NotificationSettingInline(BaseNotificationSettingInline):
         # add your changes here
         pass
 
