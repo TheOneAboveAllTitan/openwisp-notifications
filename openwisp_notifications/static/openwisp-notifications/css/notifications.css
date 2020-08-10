@@ -204,20 +204,15 @@
 }
 
 /* Loader */
-.ow-notification-dropdown .loader-wrapper {
-  box-shadow: 0px 0px 5px 1px black;
-  position: absolute;
-  top: 0px;
-  background: #efefef;
-  z-index: -1;
-  width: 100%;
-  border-radius: 5px;
+#ow-notifications-loader {
+  height : 3.5em;
 }
-.ow-notification-dropdown .loader {
-  height: 4em;
-  width: 4em;
-  margin: 40px auto 4px auto;
+#ow-notifications-loader .loader {
+  margin : 0.7em auto;
+  width: 3em;
+  height: 3em;
 }
+
 
 /* Notification level icons */
 .ow-notification-level-wrapper {
@@ -276,9 +271,6 @@
     top: 43px;
     right: 113px;
   }
-  .ow-notification-dropdown .loader {
-    margin-top: 45px;
-  }
 }
 
 @media screen and (min-width: 1025px){
@@ -296,3 +288,5 @@
     max-height: 70vh;
   }
 }
+
+
