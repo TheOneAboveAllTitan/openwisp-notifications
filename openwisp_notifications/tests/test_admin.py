@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.forms.widgets import MediaOrderConflictWarning
 from django.test import TestCase
 from django.urls import reverse
 
@@ -11,6 +12,8 @@ from openwisp_notifications import settings as app_settings
 from openwisp_notifications.admin import NotificationSettingInline
 from openwisp_notifications.signals import notify
 from openwisp_notifications.swapper import load_model
+from openwisp_notifications.widgets import add_object_notification_widget
+from openwisp_users.admin import UserAdmin
 from openwisp_users.tests.utils import TestOrganizationMixin
 
 from .test_helpers import MessagingRequest
@@ -213,3 +216,36 @@ class TestAdmin(TestOrganizationMixin, TestCase):
             self.assertTrue(
                 self.ns_inline.has_change_permission(op_request, obj=op_request.user),
             )
+
+    def test_object_notification_setting_empty(self):
+        response = self.client.get(
+            reverse('admin:openwisp_users_user_change', args=(self.admin.pk,))
+        )
+        self.assertNotContains(
+            response, 'src="/static/openwisp-notifications/js/object-notifications.js"'
+        )
+
+    @patch.object(
+        app_settings,
+        'OW_OBJECT_NOTIFICATION_WIDGET',
+        ['openwisp_users.admin.UserAdmin'],
+    )
+    def test_object_notification_setting_configured(self):
+        add_object_notification_widget()
+        response = self.client.get(
+            reverse('admin:openwisp_users_user_change', args=(self.admin.pk,))
+        )
+        self.assertContains(
+            response,
+            'src="/static/openwisp-notifications/js/object-notifications.js"',
+            1,
+        )
+
+        # If a ModelAdmin already has a Media class
+        with self.assertWarns(MediaOrderConflictWarning):
+            add_object_notification_widget()
+            response = self.client.get(
+                reverse('admin:openwisp_users_user_change', args=(self.admin.pk,))
+            )
+
+        UserAdmin.Media = None

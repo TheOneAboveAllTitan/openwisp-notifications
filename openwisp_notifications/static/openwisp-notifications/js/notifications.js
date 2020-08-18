@@ -246,6 +246,7 @@ function markNotificationRead(elem) {
     let elemId = elem.id.replace('ow-', '');
     notificationSocket.send(
         JSON.stringify({
+            type: 'notification',
             notification_id: elemId
         })
     );
@@ -258,8 +259,11 @@ function markNotificationRead(elem) {
 }
 
 function initWebSockets($) {
-    notificationSocket.onmessage = function (e) {
+    notificationSocket.addEventListener('message', function (e) {
         let data = JSON.parse(e.data);
+        if (data.type !== 'notification'){
+            return;
+        }
         // Update notification count
         let countTag = $('#ow-notification-count');
         if (data.notification_count === 0) {
@@ -300,7 +304,7 @@ function initWebSockets($) {
                 }, 30000);
             });
         }
-    };
+    });
     // Make toast message clickable
     $(document).on('click', '.ow-notification-toast', function () {
         markNotificationRead($(this).get(0));

@@ -4,14 +4,17 @@ import pytest
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from openwisp2.routing import application
 
 from openwisp_notifications.api.serializers import NotificationListSerializer
 from openwisp_notifications.signals import notify
 from openwisp_notifications.swapper import load_model
+from openwisp_notifications.tests.test_helpers import TEST_DATETIME
 
-Notification = load_model('Notification')
 User = get_user_model()
+Notification = load_model('Notification')
+ObjectNotification = load_model('ObjectNotification')
 
 
 @database_sync_to_async
@@ -29,6 +32,21 @@ def notification_operation(notification, **kwargs):
     if kwargs.get('refresh', False):
         notification.refresh_from_db()
     return Notification.objects.first()
+
+
+@database_sync_to_async
+def create_object_notification(admin_user):
+    obj = ObjectNotification.objects.create(
+        object_id=admin_user.pk,
+        object_content_type_id=ContentType.objects.get_for_model(
+            admin_user._meta.model
+        ).pk,
+        user_id=admin_user.pk,
+    )
+    obj.save()
+    print(obj)
+    print(ObjectNotification.objects.all())
+    return obj
 
 
 @pytest.mark.asyncio
@@ -96,7 +114,9 @@ class TestNotificationSockets:
         await communicator.receive_json_from()
         res = await communicator.receive_json_from()
         assert res['notification_count'] == 1
-        await communicator.send_json_to({'notification_id': str(n.id)})
+        await communicator.send_json_to(
+            {'type': 'notification', 'notification_id': str(n.id)}
+        )
         # Assert message for notification mark read
         res = await communicator.receive_json_from()
         assert res['notification_count'] == 0
@@ -109,8 +129,33 @@ class TestNotificationSockets:
         await communicator.send_to('Not JSON')
         assert await communicator.receive_nothing() is True
 
-        await communicator.send_json_to({'notification': 'random'})
+        await communicator.send_json_to(
+            {'type': 'notification', 'notification_id': 'random'}
+        )
         assert await communicator.receive_nothing() is True
 
-        await communicator.send_json_to({'notification_id': str(uuid.uuid4())})
+        await communicator.send_json_to(
+            {'type': 'notification', 'notification_id': str(uuid.uuid4())}
+        )
         assert await communicator.receive_nothing() is True
+
+    async def test_retreive_object_notification_valid_till(
+        self, admin_user, admin_client
+    ):
+        communicator = await self._get_communicator(admin_client)
+        # Test for non-existing object
+        payload = {
+            'type': 'object_notification',
+            'app_label': admin_user._meta.app_label,
+            'model_name': admin_user._meta.model_name,
+            'object_id': str(admin_user.pk),
+        }
+        await communicator.send_json_to(payload)
+        assert await communicator.receive_nothing() is True
+
+        # Test for an existing object
+        await create_object_notification(admin_user)
+        await communicator.send_json_to(payload)
+        response = await communicator.receive_from()
+        assert response['type'] == 'object_notification'
+        assert response['valid_till'] == TEST_DATETIME
