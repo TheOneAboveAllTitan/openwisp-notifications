@@ -1,9 +1,12 @@
 import uuid
+from datetime import datetime
 from unittest.mock import patch
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.exceptions import ErrorDetail
 
 from openwisp_notifications.signals import notify
@@ -17,11 +20,13 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 Notification = load_model('Notification')
 NotificationSetting = load_model('NotificationSetting')
+ObjectNotification = load_model('ObjectNotification')
 
 Organization = swapper_load_model('openwisp_users', 'Organization')
 OrganizationUser = swapper_load_model('openwisp_users', 'OrganizationUser')
 
 NOT_FOUND_ERROR = ErrorDetail(string='Not found.', code='not_found')
+TEST_DATETIME = datetime(2020, 5, 4, 0, 0, 0, 0, timezone.get_default_timezone())
 
 
 class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
@@ -40,6 +45,19 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
             query_params.append(f'{key}={value}')
         query_string = '&'.join(query_params)
         return f'{path}?{query_string}'
+
+    def _create_object_notification(self):
+        org_user = self._get_org_user()
+        org_user_content_type_id = ContentType.objects.get_for_model(
+            org_user._meta.model
+        ).pk
+        object_notification = ObjectNotification.objects.create(
+            user=self.admin,
+            object_id=org_user.pk,
+            object_content_type_id=org_user_content_type_id,
+            valid_till=TEST_DATETIME,
+        )
+        return (object_notification, org_user_content_type_id, org_user.pk)
 
     def test_list_notification_api(self):
         number_of_notifications = 21
@@ -234,7 +252,8 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
             self.assertEqual(response.status_code, 401)
             self.assertEqual(response.data, response_data)
 
-    def test_bearer_authentication(self):
+    @patch('openwisp_notifications.tasks.delete_objectnotification_object.apply_async')
+    def test_bearer_authentication(self, mocked_test):
         self.client.logout()
         notify.send(sender=self.admin, type='default', target=self.admin)
         n = Notification.objects.first()
@@ -299,6 +318,31 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
             )
             self.assertEqual(response.status_code, 200)
             self.assertIsNotNone(response.data)
+
+        obj_notification, obj_content_type, obj_id = self._create_object_notification()
+
+        with self.subTest('Test listing object notifications'):
+            url = self._get_path('object_notification_list')
+            response = self.client.get(url, HTTP_AUTHORIZATION=f'Bearer {token}')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(response.data['results']), 1)
+
+        with self.subTest('Test retrieving object_notification'):
+            url = self._get_path('object_notification', obj_content_type, obj_id)
+            response = self.client.get(url, HTTP_AUTHORIZATION=f'Bearer {token}')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['object_id'], str(obj_id))
+
+        with self.subTest('Test creating notification setting'):
+            url = self._get_path('object_notification', obj_content_type, obj_id)
+            response = self.client.post(url, HTTP_AUTHORIZATION=f'Bearer {token}',)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id', response.data)
+
+        with self.subTest('Test deleting object_notification'):
+            url = self._get_path('object_notification', obj_content_type, obj_id)
+            response = self.client.delete(url, HTTP_AUTHORIZATION=f'Bearer {token}')
+            self.assertEqual(response.status_code, 204)
 
     def test_notification_recipients(self):
         # Tests user can only interact with notifications assigned to them
@@ -600,3 +644,160 @@ class TestNotificationApi(TestCase, TestOrganizationMixin, AuthenticationMixin):
                 response.url,
                 '{view}?next={url}'.format(view=reverse('admin:login'), url=url),
             )
+
+    @patch('openwisp_notifications.tasks.delete_objectnotification_object.apply_async')
+    def test_create_object_notification_api(self, mocked_task):
+        org_user = self._get_org_user()
+        org_user_content_type_id = ContentType.objects.get_for_model(
+            org_user._meta.model
+        ).pk
+        url = self._get_path(
+            'object_notification', org_user_content_type_id, org_user.pk
+        )
+
+        response = self.client.post(
+            url, data={'valid_till': TEST_DATETIME}, content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(ObjectNotification.objects.count(), 1)
+
+        object_notification = ObjectNotification.objects.first()
+        self.assertEqual(object_notification.user_id, self.admin.pk)
+        self.assertEqual(object_notification.object_id, str(org_user.pk))
+        self.assertEqual(
+            object_notification.object_content_type_id, org_user_content_type_id
+        )
+        self.assertEqual(object_notification.valid_till, TEST_DATETIME)
+
+    @patch('openwisp_notifications.tasks.delete_objectnotification_object.apply_async')
+    def test_update_object_notification_api(self, mocked_task):
+        obj_notification, obj_content_type, obj_id = self._create_object_notification()
+        self.assertEqual(ObjectNotification.objects.count(), 1)
+
+        valid_till = datetime(2020, 8, 31, 0, 0, 0, 0, timezone.get_default_timezone())
+        url = self._get_path('object_notification', obj_content_type, obj_id)
+
+        response = self.client.post(
+            url, data={'valid_till': valid_till}, content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ObjectNotification.objects.count(), 1)
+        object_notification = ObjectNotification.objects.first()
+        self.assertEqual(object_notification.valid_till, valid_till)
+
+    @patch('openwisp_notifications.tasks.delete_objectnotification_object.apply_async')
+    def test_delete_object_notification_api(self, mocked_task):
+        obj_notification, obj_content_type, obj_id = self._create_object_notification()
+
+        with self.subTest('Test for non-existing object notification'):
+            url = self._get_path('object_notification', 20, uuid.uuid4())
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, 404)
+            self.assertDictEqual(
+                response.data, {'detail': NOT_FOUND_ERROR},
+            )
+
+        with self.subTest('Test for existing object notification'):
+            url = self._get_path('object_notification', obj_content_type, obj_id)
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, 204)
+            self.assertIsNone(response.data)
+            self.assertEqual(ObjectNotification.objects.count(), 0)
+
+    @patch('openwisp_notifications.tasks.delete_objectnotification_object.apply_async')
+    def test_retrieve_object_notification_api(self, mocked_task):
+        obj_notification, obj_content_type, obj_id = self._create_object_notification()
+
+        with self.subTest('Test for non-existing object notification'):
+            url = self._get_path('object_notification', 0, uuid.uuid4())
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, 404)
+            self.assertDictEqual(
+                response.data, {'detail': NOT_FOUND_ERROR},
+            )
+
+        with self.subTest('Test for existing object notification'):
+            url = self._get_path('object_notification', obj_content_type, obj_id)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('user', response.data)
+            self.assertIn('id', response.data)
+            self.assertIn('object_id', response.data)
+            self.assertIn('object_content_type', response.data)
+            self.assertIn('valid_till', response.data)
+
+    @patch('openwisp_notifications.tasks.delete_objectnotification_object.apply_async')
+    def test_list_object_notification_api(self, mocked_task):
+        number_of_obj_notifications = 21
+        url = reverse(f'{self.url_namespace}:object_notification_list')
+        object_notifications = []
+        for _ in range(number_of_obj_notifications):
+            object_notifications.append(
+                ObjectNotification(
+                    user=self.admin, object_id=uuid.uuid4(), object_content_type_id=12
+                )
+            )
+        ObjectNotification.objects.bulk_create(
+            object_notifications, ignore_conflicts=True
+        )
+        self.assertEqual(
+            ObjectNotification.objects.count(), number_of_obj_notifications
+        )
+
+        with self.subTest('Test "page" query in object notification list view'):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], number_of_obj_notifications)
+            self.assertIn(
+                self._get_path('object_notification_list', page=2),
+                response.data['next'],
+            )
+            self.assertEqual(response.data['previous'], None)
+            self.assertEqual(len(response.data['results']), 20)
+
+            next_response = self.client.get(response.data['next'])
+            self.assertEqual(next_response.status_code, 200)
+            self.assertEqual(next_response.data['count'], number_of_obj_notifications)
+            self.assertEqual(
+                next_response.data['next'], None,
+            )
+            self.assertIn(
+                self._get_path('object_notification_list'),
+                next_response.data['previous'],
+            )
+            self.assertEqual(len(next_response.data['results']), 1)
+
+        with self.subTest('Test "page_size" query'):
+            page_size = 5
+            url = f'{url}?page_size={page_size}'
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], number_of_obj_notifications)
+            self.assertIn(
+                self._get_path('object_notification_list', page=2, page_size=page_size),
+                response.data['next'],
+            )
+            self.assertEqual(response.data['previous'], None)
+            self.assertEqual(len(response.data['results']), page_size)
+
+            next_response = self.client.get(response.data['next'])
+            self.assertEqual(next_response.status_code, 200)
+            self.assertEqual(next_response.data['count'], number_of_obj_notifications)
+            self.assertIn(
+                self._get_path('object_notification_list', page=3, page_size=page_size),
+                next_response.data['next'],
+            )
+            self.assertIn(
+                self._get_path('object_notification_list', page_size=page_size),
+                next_response.data['previous'],
+            )
+            self.assertEqual(len(next_response.data['results']), page_size)
+
+        with self.subTest('Test individual result object'):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            object_notification = response.data['results'][0]
+            self.assertIn('id', object_notification)
+            self.assertIn('object_id', object_notification)
+            self.assertIn('object_content_type', object_notification)
+            self.assertIsNone(object_notification['valid_till'])

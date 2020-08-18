@@ -1,4 +1,4 @@
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
@@ -7,8 +7,9 @@ from rest_framework.generics import (
     GenericAPIView,
     RetrieveDestroyAPIView,
     RetrieveUpdateAPIView,
+    get_object_or_404,
 )
-from rest_framework.mixins import ListModelMixin
+from rest_framework.mixins import CreateModelMixin, ListModelMixin, UpdateModelMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,6 +18,7 @@ from openwisp_notifications.api.serializers import (
     NotificationListSerializer,
     NotificationSerializer,
     NotificationSettingSerializer,
+    ObjectNotificationSerializer,
 )
 from openwisp_notifications.handlers import clear_notification_cache
 from openwisp_notifications.swapper import load_model
@@ -29,6 +31,7 @@ UNAUTHORIZED_STATUS_CODES = (
 
 Notification = load_model('Notification')
 NotificationSetting = load_model('NotificationSetting')
+ObjectNotification = load_model('ObjectNotification')
 
 
 class NotificationPaginator(PageNumberPagination):
@@ -121,9 +124,62 @@ class NotificationSettingView(BaseNotificationSettingView, RetrieveUpdateAPIView
     lookup_field = 'pk'
 
 
+class BaseObjectNotificationView(GenericAPIView):
+    model = ObjectNotification
+    serializer_class = ObjectNotificationSerializer
+    authentication_classes = [BearerAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ObjectNotification.objects.filter(user=self.request.user)
+
+
+class ObjectNotificationListView(BaseObjectNotificationView, ListModelMixin):
+    pagination_class = NotificationPaginator
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+
+class ObjectNotificationView(
+    BaseObjectNotificationView,
+    RetrieveDestroyAPIView,
+    CreateModelMixin,
+    UpdateModelMixin,
+):
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        filter_kwargs = {
+            'object_content_type': self.kwargs['object_content_type'],
+            'object_id': self.kwargs['object_id'],
+        }
+        obj = get_object_or_404(queryset, **filter_kwargs)
+        # May raise a permission denied
+        self.check_object_permissions(self.request, obj)
+        return obj
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().update(request, *args, **kwargs)
+        except Http404:
+            return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user,
+            object_content_type_id=self.kwargs['object_content_type'],
+            object_id=self.kwargs['object_id'],
+        )
+
+
 notifications_list = NotificationListView.as_view()
 notification_detail = NotificationDetailView.as_view()
 notifications_read_all = NotificationReadAllView.as_view()
 notification_read_redirect = NotificationReadRedirect.as_view()
 notification_setting_list = NotificationSettingListView.as_view()
 notification_setting = NotificationSettingView.as_view()
+object_notification_list = ObjectNotificationListView.as_view()
+object_notification = ObjectNotificationView.as_view()

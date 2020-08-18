@@ -9,6 +9,9 @@ from openwisp_notifications.tests.test_notification_setting import (
 from openwisp_notifications.tests.test_notifications import (
     TestNotifications as BaseTestNotifications,
 )
+from openwisp_notifications.tests.test_object_notification import (
+    TestObjectNotification as BaseTestObjectNotification,
+)
 
 Notification = load_model('Notification')
 
@@ -47,7 +50,12 @@ class TestNotificationSetting(BaseTestNotificationSetting):
     pass
 
 
+class TestObjectNotification(BaseTestObjectNotification):
+    pass
+
+
 del BaseTestAdmin
 del BaseTestNotifications
 del BaseTestNotificationApi
 del BaseTestNotificationSetting
+del BaseTestObjectNotification

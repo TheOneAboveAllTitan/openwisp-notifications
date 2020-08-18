@@ -493,6 +493,12 @@ by disabling both web and email option for a notification setting.
 **Note**: If a user has not configured their email preference for a particular notification setting,
 then ``email_notification`` option of concerned notification type will be used.
 
+
+Object Notification Preference
+------------------------------
+*OpenWISP Notifications* provides even a higher level of granularity to user choose there notification
+preference. Users can disable notifications for any object for a desired period of time.
+
 Scheduled deletion of notifications
 -----------------------------------
 
@@ -787,6 +793,34 @@ Update notification setting details
 .. code-block:: text
 
     PATCH /api/v1/notification/user-setting/{pk}/
+
+List user's object notification setting
+#######################################
+
+.. code-block:: text
+
+    GET /api/v1/notification/ignore/
+
+Get object notification setting details
+#######################################
+
+.. code-block:: text
+
+    GET /api/v1/notification/ignore/{object_content_type}/{object_id}/
+
+Create object notification setting
+##################################
+
+.. code-block:: text
+
+    POST /api/v1/notification/ignore/{object_content_type}/{object_id}/
+
+Delete object notification setting
+##################################
+
+.. code-block:: text
+
+    DELETE /api/v1/notification/ignore/{object_content_type}/{object_id}/
 
 Installing for development
 --------------------------

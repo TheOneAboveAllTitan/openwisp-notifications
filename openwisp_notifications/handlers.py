@@ -24,6 +24,7 @@ User = get_user_model()
 
 Notification = load_model('Notification')
 NotificationSetting = load_model('NotificationSetting')
+ObjectNotification = load_model('ObjectNotification')
 NotificationsAppConfig = apps.get_app_config(NotificationSetting._meta.app_label)
 
 Group = swapper_load_model('openwisp_users', 'Group')
@@ -44,13 +45,15 @@ def notify_handler(**kwargs):
     recipient = kwargs.pop('recipient', None)
     notification_type = kwargs.pop('type', None)
     notification_template = get_notification_configuration(notification_type)
+    target = kwargs.get('target', None)
     level = notification_template.get(
         'level', kwargs.pop('level', Notification.LEVELS.info)
     )
     verb = notification_template.get('verb', kwargs.pop('verb', None))
-    target_org = getattr(kwargs.get('target', None), 'organization_id', None)
+    target_org = getattr(target, 'organization_id', None)
 
     where = Q(is_superuser=True)
+    not_where = Q()
     where_group = Q()
     if target_org:
         where = where | (Q(is_staff=True) & Q(openwisp_users_organization=target_org))
@@ -72,6 +75,16 @@ def notify_handler(**kwargs):
         where = where & notification_setting
         where_group = where_group & notification_setting
 
+    # We can only find object notification setting if target object is present
+    if target:
+        not_where = Q(
+            objectnotification__object_id=target.pk,
+            objectnotification__object_content_type=ContentType.objects.get_for_model(
+                target._meta.model
+            ),
+            objectnotification__valid_till__gt=timezone.now(),
+        )
+
     if recipient:
         # Check if recipient is User, Group or QuerySet
         if isinstance(recipient, Group):
@@ -82,11 +95,13 @@ def notify_handler(**kwargs):
             recipients = [recipient]
     else:
         recipients = (
-            User.objects.prefetch_related('notificationsetting_set')
+            User.objects.prefetch_related(
+                'notificationsetting_set', 'objectnotification_set'
+            )
             .order_by('date_joined')
             .filter(where)
+            .exclude(not_where)
         )
-
     optional_objs = [
         (kwargs.pop(opt, None), opt) for opt in ('target', 'action_object')
     ]
@@ -254,3 +269,14 @@ def notification_setting_user_created(instance, created, **kwargs):
 def notification_setting_org_created(created, instance, **kwargs):
     if created:
         tasks.ns_organization_created.delay(instance.pk)
+
+
+@receiver(
+    post_save,
+    sender=ObjectNotification,
+    dispatch_uid='schedule_objectnotification_deletion',
+)
+def schedule_objectnotification_deletion(instance, created, **kwargs):
+    tasks.delete_objectnotification_object.apply_async(
+        (instance.pk,), eta=instance.valid_till
+    )

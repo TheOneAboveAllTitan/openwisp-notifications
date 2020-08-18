@@ -13,6 +13,7 @@ User = get_user_model()
 
 Notification = load_model('Notification')
 NotificationSetting = load_model('NotificationSetting')
+ObjectNotification = load_model('ObjectNotification')
 
 Organization = swapper_load_model('openwisp_users', 'Organization')
 OrganizationUser = swapper_load_model('openwisp_users', 'OrganizationUser')
@@ -205,3 +206,11 @@ def ns_organization_created(instance_id):
     NotificationSetting.objects.bulk_create(
         notification_settings, ignore_conflicts=True
     )
+
+
+@shared_task
+def delete_objectnotification_object(instance_id):
+    """
+    Deletes ObjectNotification object post it's expiration.
+    """
+    ObjectNotification.objects.filter(pk=instance_id).delete()

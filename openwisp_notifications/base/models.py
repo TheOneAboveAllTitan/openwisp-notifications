@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.cache import cache
@@ -254,3 +255,15 @@ class AbstractNotificationSetting(UUIDModel):
         if self.web is not None:
             return self.web
         return self.notification_type_config.get('web_notification')
+
+
+class AbstractObjectNotification(UUIDModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    object_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=255)
+    object = GenericForeignKey('object_content_type', 'object_id')
+    valid_till = models.DateTimeField(null=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['valid_till']
