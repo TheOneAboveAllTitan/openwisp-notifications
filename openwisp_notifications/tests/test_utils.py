@@ -5,6 +5,7 @@ import swapper
 from django.core import management
 from django.test import TestCase
 
+from openwisp_notifications import checks
 from openwisp_notifications import settings as app_settings
 from openwisp_notifications.swapper import load_model
 from openwisp_users.tests.utils import TestOrganizationMixin
@@ -42,3 +43,21 @@ class TestUtils(TestCase, TestOrganizationMixin):
         ), StringIO() as stderr:
             management.call_command('check', stderr=stderr)
             self.assertIn('django-cors-headers', stderr.getvalue())
+
+    def test_ow_object_notification_setting_improperly_configured(self):
+        def run_check():
+            return checks.check_ow_object_notification_widget_setting(None).pop()
+
+        with self.subTest('Test setting is not a list'):
+            error_message = 'OW_OBJECT_NOTIFICATION_WIDGET should be a list'
+            app_settings.OW_OBJECT_NOTIFICATION_WIDGET = tuple()
+            error = run_check()
+            self.assertIn(error_message, error.hint)
+
+        with self.subTest('Test setting does not contains dotted path string'):
+            error_message = (
+                'OW_OBJECT_NOTIFICATION_WIDGET should contain dotted path string'
+            )
+            app_settings.OW_OBJECT_NOTIFICATION_WIDGET = [0]
+            error = run_check()
+            self.assertIn(error_message, error.hint)

@@ -27,3 +27,32 @@ def check_cors_configuration(app_configs, **kwargs):
             )
         )
     return errors
+
+
+@checks.register
+def check_ow_object_notification_widget_setting(app_configs, **kwargs):
+    errors = []
+    if not isinstance(app_settings.OW_OBJECT_NOTIFICATION_WIDGET, list):
+        errors.append(
+            checks.Warning(
+                msg='Improperly Configured',
+                hint=(
+                    'OW_OBJECT_NOTIFICATION_WIDGET should be a list,'
+                    f' {type(app_settings.OW_OBJECT_NOTIFICATION_WIDGET)} provided'
+                ),
+                obj='Settings',
+            )
+        )
+    for model_admin in app_settings.OW_OBJECT_NOTIFICATION_WIDGET:
+        if not isinstance(model_admin, str):
+            errors.append(
+                checks.Error(
+                    msg='Improperly Configured',
+                    hint=(
+                        'OW_OBJECT_NOTIFICATION_WIDGET should contain dotted path string'
+                        f'to ModelAdmin, found {type(app_settings.OW_OBJECT_NOTIFICATION_WIDGET)}'
+                    ),
+                    obj='Settings',
+                )
+            )
+    return errors

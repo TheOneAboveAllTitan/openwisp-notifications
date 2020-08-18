@@ -31,6 +31,10 @@ OPENWISP_NOTIFICATIONS_CACHE_TIMEOUT = getattr(
     settings, 'OPENWISP_NOTIFICATIONS_CACHE_TIMEOUT', 2 * 24 * 60 * 60
 )
 
+OW_OBJECT_NOTIFICATION_WIDGET = getattr(
+    settings, 'OPENWISP_NOTIFICATIONS_OBJECT_NOTIFICATION_WIDGET', []
+)
+
 
 def get_config():
     user_config = getattr(settings, 'OPENWISP_NOTIFICATIONS_CONFIG', {})

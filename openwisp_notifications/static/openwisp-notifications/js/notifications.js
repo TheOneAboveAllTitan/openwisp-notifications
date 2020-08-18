@@ -1,11 +1,7 @@
 'use strict';
 const notificationReadStatus = new Map();
-const notificationSocket = new ReconnectingWebSocket(
-    `${webSocketProtocol}://${notificationApiHost.host}/ws/notification/`,
-    null, {
-        debug: false
-    }
-);
+const userLanguage = navigator.language || navigator.userLanguage;
+
 if (typeof gettext === 'undefined') {
     var gettext = function(word){ return word; };
 }
@@ -139,16 +135,7 @@ function notificationWidget($) {
 
     function notificationListItem(elem) {
         let klass,
-            timestamp = new Date(elem.timestamp),
-            lang = navigator.language || navigator.userLanguage,
-            date = timestamp.toLocaleDateString(
-                lang, {day: 'numeric', month: 'short', year: 'numeric'}
-            ),
-            time = timestamp.toLocaleTimeString(
-                lang, {hour: 'numeric', minute: 'numeric'}
-            ),
-            at = gettext('at'),
-            datetime = `${date} ${at} ${time}`;
+            datetime = dateTimeStampToDateTimeLocaleString(new Date(elem.timestamp));
 
         if (!notificationReadStatus.has(elem.id)) {
             if (elem.unread) {
@@ -246,6 +233,7 @@ function markNotificationRead(elem) {
     let elemId = elem.id.replace('ow-', '');
     notificationSocket.send(
         JSON.stringify({
+            type: 'notification',
             notification_id: elemId
         })
     );
@@ -258,8 +246,12 @@ function markNotificationRead(elem) {
 }
 
 function initWebSockets($) {
-    notificationSocket.onmessage = function (e) {
+    notificationSocket.addEventListener('message', function (e) {
         let data = JSON.parse(e.data);
+        if (data.type !== 'notification') {
+            return;
+        }
+
         // Update notification count
         let countTag = $('#ow-notification-count');
         if (data.notification_count === 0) {
@@ -300,7 +292,7 @@ function initWebSockets($) {
                 }, 30000);
             });
         }
-    };
+    });
     // Make toast message clickable
     $(document).on('click', '.ow-notification-toast', function () {
         markNotificationRead($(this).get(0));
@@ -316,4 +308,23 @@ function initWebSockets($) {
 
 function getAbsoluteUrl(url) {
     return notificationApiHost.origin + url;
+}
+
+function dateTimeStampToDateTimeLocaleString(dateTimeStamp) {
+    let date = dateTimeStamp.toLocaleDateString(
+            userLanguage, {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            }
+        ),
+        time = dateTimeStamp.toLocaleTimeString(
+            userLanguage, {
+                hour: 'numeric',
+                minute: 'numeric'
+            }
+        ),
+        at = gettext('at'),
+        dateTimeString = `${date} ${at} ${time}`;
+    return dateTimeString;
 }
