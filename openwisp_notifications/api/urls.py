@@ -31,7 +31,7 @@ def get_api_urls(api_views=None):
             'ignore/', views.object_notification_list, name='object_notification_list'
         ),
         path(
-            'ignore/<int:object_content_type>/<uuid:object_id>/',
+            'ignore/<str:app_label>/<str:model_name>/<uuid:object_id>/',
             views.object_notification,
             name='object_notification',
         ),

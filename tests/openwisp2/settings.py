@@ -180,7 +180,7 @@ ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = False
 OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK = True
 OPENWISP_API_DOCS = True
 OPENWISP_USERS_AUTH_API = True
-
+OW_OBJECT_NOTIFICATION_WIDGET = ['openwisp_users.admin.UserAdmin']
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
 
 # local settings must be imported before test runner otherwise they'll be ignored

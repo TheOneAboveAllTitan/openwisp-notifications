@@ -1,0 +1,42 @@
+.ow-hide {
+  display: none;
+}
+.ow-object-notify {
+  width: 30px;
+  height: 15px;
+  float: right;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+.ow-object-notify-bell {
+  background-image: url('/static/openwisp-notifications/images/icons/icon-bell-regular.svg');
+}
+.ow-object-notify-slash-bell {
+  background-image: url('/static/openwisp-notifications/images/icons/icon-bell-slash-regular.svg');
+}
+
+.object-notification-container {
+  background-color: #efefef;
+  z-index: 999;
+  position: absolute;
+  width: 100px;
+  right: 40px;
+  border: 2px solid #464646;
+  border-radius: 5px;
+  box-shadow: 0px 0px 5px 0px black;
+  margin-top:3px;
+  color :#333333;
+  text-align:center;
+}
+.object-notification-container > div {
+  padding: 5px;
+  cursor: pointer;
+}
+.object-notification-container > div:hover,
+object-notification-container > div.selected {
+  background-color:#515151;
+  color: #fff;
+}
+.object-notification-container p {
+  margin: auto;
+}

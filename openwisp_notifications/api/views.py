@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -150,10 +151,16 @@ class ObjectNotificationView(
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
+    @property
+    def model_content_type(self):
+        return ContentType.objects.get_by_natural_key(
+            self.kwargs['app_label'], self.kwargs['model_name']
+        ).pk
+
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
         filter_kwargs = {
-            'object_content_type': self.kwargs['object_content_type'],
+            'object_content_type': self.model_content_type,
             'object_id': self.kwargs['object_id'],
         }
         obj = get_object_or_404(queryset, **filter_kwargs)

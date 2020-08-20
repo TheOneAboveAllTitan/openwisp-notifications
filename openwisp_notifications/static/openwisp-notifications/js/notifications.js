@@ -31,6 +31,7 @@ function initNotificationDropDown($) {
             $('.ow-notification-dropdown').addClass('ow-hide');
         }
     });
+    
 }
 
 function notificationWidget($) {
