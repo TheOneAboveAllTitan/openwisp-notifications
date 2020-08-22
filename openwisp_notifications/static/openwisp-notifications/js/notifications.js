@@ -1,11 +1,5 @@
 'use strict';
 const notificationReadStatus = new Map();
-const notificationSocket = new ReconnectingWebSocket(
-    `${webSocketProtocol}://${notificationApiHost.host}/ws/notification/`,
-    null, {
-        debug: false
-    }
-);
 if (typeof gettext === 'undefined') {
     var gettext = function(word){ return word; };
 }

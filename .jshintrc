@@ -9,7 +9,6 @@
         "ReconnectingWebSocket": true,
         "notificationApiHost": true,
         "notificationSound": true,
-        "webSocketProtocol": true,
         "notificationSocket": true,
         "owNotifyObjectId": true,
         "owNotifyAppLabel": true,
