@@ -1,0 +1,6 @@
+[enhancement] Added Escape key handler for object notification widget
+
+Added "keyup" handler for object notification widget to hide it
+when "Escape" key is pressed.
+
+Closes #133
